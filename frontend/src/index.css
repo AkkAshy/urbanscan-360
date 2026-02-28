@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+/* shadcn-совместимые CSS переменные для 3D-folder компонента */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+}
+
+/* Тёмная тема по умолчанию */
+:root {
+  /* Наши переменные для кастомных компонентов */
+  --bg-primary: #0a0a12;
+  --bg-secondary: #12121e;
+  --bg-card: #1a1a2e;
+  --bg-hover: #22223a;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --text-primary: #f0f0f5;
+  --text-secondary: #8888a0;
+  --border: #2a2a40;
+  --danger: #ef4444;
+  --success: #22c55e;
+
+  /* shadcn переменные для 3D-folder */
+  --background: #0a0a12;
+  --foreground: #f0f0f5;
+  --card: #1a1a2e;
+  --card-foreground: #f0f0f5;
+  --muted: #22223a;
+  --muted-foreground: #8888a0;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --accent-foreground: #ffffff;
+
+  /* 3D-folder цвета папки */
+  --folder-back: #2a2a4a;
+  --folder-tab: #3b3b6a;
+  --folder-front: #1a1a3e;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+/* Toast анимация */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
