@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { mediaUrl } from "../../api/client";
 import { useViewerStore } from "../../store/viewerStore";
 
 /**
@@ -39,7 +40,7 @@ export function ThumbnailStrip() {
             }`}
           >
             <img
-              src={photo.thumbnail || photo.image}
+              src={mediaUrl(photo.thumbnail || photo.image)}
               alt={photo.title}
               className="w-full h-full object-cover"
               loading="lazy"

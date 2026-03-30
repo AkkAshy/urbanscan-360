@@ -2,9 +2,18 @@ import axios from "axios";
 
 /* Axios клиент с JWT interceptor */
 
-const API_BASE = import.meta.env.PROD
-  ? "https://urban.saribek.uz/api"
-  : "/api";
+const BACKEND_URL = import.meta.env.PROD
+  ? "https://urban.saribek.uz"
+  : "";
+
+const API_BASE = `${BACKEND_URL}/api`;
+
+/** Превращает относительный media путь в полный URL */
+export function mediaUrl(path: string | null): string {
+  if (!path) return "";
+  if (path.startsWith("http")) return path;
+  return `${BACKEND_URL}${path}`;
+}
 
 const api = axios.create({
   baseURL: API_BASE,

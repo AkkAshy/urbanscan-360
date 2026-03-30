@@ -2,6 +2,7 @@ import { Link2, MapPin, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getFolders } from "../api/folders";
 import { deletePhotoLink, getPhotos } from "../api/photos";
+import { mediaUrl } from "../api/client";
 import type { Folder, Photo } from "../types";
 import type { Project } from "../components/ui/3d-folder";
 import { useViewerStore } from "../store/viewerStore";
@@ -22,7 +23,7 @@ import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 function photosToProjects(photos: Photo[]): Project[] {
   return photos.map((p) => ({
     id: String(p.id),
-    image: p.thumbnail || p.image,
+    image: mediaUrl(p.thumbnail || p.image),
     title: p.title,
   }));
 }
@@ -108,7 +109,7 @@ export function UploadPage() {
       const viewerData = lightboxPhotos.map((p) => ({
         id: p.id,
         title: p.title,
-        image: p.image,
+        image: mediaUrl(p.image),
         thumbnail: p.thumbnail,
         shot_date: p.shot_date,
         latitude: p.latitude,
@@ -245,7 +246,7 @@ export function UploadPage() {
       {/* === 360° Viewer оверлей с редактором связей === */}
       {viewerOpen && currentViewerPhoto && (
         <div className="fixed inset-0 z-[60] bg-black">
-          <AFrameScene photoUrl={currentViewerPhoto.image} sceneRef={sceneRef} />
+          <AFrameScene photoUrl={mediaUrl(currentViewerPhoto.image)} sceneRef={sceneRef} />
 
           {/* Кнопки: закрыть + связи */}
           <div className="absolute top-4 right-4 z-30 flex gap-2">

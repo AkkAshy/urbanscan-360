@@ -1,6 +1,7 @@
 import { Calendar, Eye, Trash2 } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { deletePhoto } from "../../api/photos";
+import { mediaUrl } from "../../api/client";
 import { toast } from "../../store/toastStore";
 import type { Photo } from "../../types";
 
@@ -63,7 +64,7 @@ export function PhotoGrid({ photos, onRefresh, onPhotoClick }: Props) {
             onClick={() => onPhotoClick?.(photo, index)}
           >
             <img
-              src={photo.thumbnail || photo.image}
+              src={mediaUrl(photo.thumbnail || photo.image)}
               alt={photo.title}
               className="w-full h-full object-cover"
               loading="lazy"

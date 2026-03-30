@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, Eye, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { mediaUrl } from "../../api/client";
 import type { Photo } from "../../types";
 
 interface Props {
@@ -43,7 +44,7 @@ export function PhotoLightbox({ photos, currentIndex, onClose, onView360 }: Prop
     <div className="fixed inset-0 z-[60] bg-black flex items-center justify-center">
       {/* Фото на весь экран */}
       <img
-        src={photo.image}
+        src={mediaUrl(photo.image)}
         alt={photo.title}
         className="max-w-full max-h-full object-contain select-none"
       />

@@ -1,5 +1,6 @@
 import { Link2, Plus, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { mediaUrl } from "../../api/client";
 import { createPhotoLink, deletePhotoLink } from "../../api/photos";
 import type { PhotoLink, PhotoViewer } from "../../types";
 import { useViewerStore } from "../../store/viewerStore";
@@ -196,7 +197,7 @@ export function LinkEditor({
                   className="flex-shrink-0 w-20 rounded-md overflow-hidden border-2 border-transparent hover:border-orange-400 transition-all cursor-pointer disabled:opacity-50"
                 >
                   <img
-                    src={photo.thumbnail || photo.image}
+                    src={mediaUrl(photo.thumbnail || photo.image)}
                     alt={photo.title}
                     className="w-full h-12 object-cover"
                     loading="lazy"
