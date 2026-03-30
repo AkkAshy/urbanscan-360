@@ -34,6 +34,14 @@ class Photo(models.Model):
     shot_date = models.DateTimeField(
         "Дата съёмки", null=True, blank=True, help_text="Из EXIF или ручной ввод"
     )
+    latitude = models.FloatField(
+        "Широта", null=True, blank=True, db_index=True,
+        help_text="Из EXIF GPS или ручной ввод",
+    )
+    longitude = models.FloatField(
+        "Долгота", null=True, blank=True, db_index=True,
+        help_text="Из EXIF GPS или ручной ввод",
+    )
     created_at = models.DateTimeField("Загружено", auto_now_add=True)
 
     class Meta:
@@ -43,3 +51,38 @@ class Photo(models.Model):
 
     def __str__(self):
         return self.title or os.path.basename(self.image.name)
+
+
+class PhotoLink(models.Model):
+    """Связь между двумя фото — хотспот (дверь, проход и т.д.)"""
+
+    from_photo = models.ForeignKey(
+        Photo,
+        on_delete=models.CASCADE,
+        related_name="links_from",
+        verbose_name="Из фото",
+    )
+    to_photo = models.ForeignKey(
+        Photo,
+        on_delete=models.CASCADE,
+        related_name="links_to",
+        verbose_name="В фото",
+    )
+    yaw = models.FloatField(
+        "Yaw (°)",
+        help_text="Горизонтальный угол стрелки в сцене (0-360°)",
+    )
+    pitch = models.FloatField(
+        "Pitch (°)",
+        default=0,
+        help_text="Вертикальный угол стрелки в сцене",
+    )
+    created_at = models.DateTimeField("Создано", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Связь фото"
+        verbose_name_plural = "Связи фото"
+        unique_together = ("from_photo", "to_photo")
+
+    def __str__(self):
+        return f"{self.from_photo} → {self.to_photo}"

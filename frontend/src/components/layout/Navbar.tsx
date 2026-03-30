@@ -1,4 +1,4 @@
-import { LogOut, Upload, Users } from "lucide-react";
+import { LogOut, Map, Upload, Users } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 
@@ -8,6 +8,7 @@ export function Navbar() {
 
   const links = [
     { to: "/upload", label: "Загрузка", icon: Upload },
+    { to: "/map", label: "Карта", icon: Map },
   ];
 
   // Ссылка на управление юзерами — только для админа

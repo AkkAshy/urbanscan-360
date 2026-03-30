@@ -1,6 +1,8 @@
 from django.db.models import Count
 from rest_framework import viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from apps.accounts.permissions import IsManagerOrAdmin
 
@@ -18,11 +20,26 @@ class FolderViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         # Просмотр — все авторизованные, остальное — менеджер+
-        if self.action in ("list", "retrieve"):
+        if self.action in ("list", "retrieve", "map_points"):
             return [IsAuthenticated()]
         if self.action == "create":
-            return [IsAuthenticated()]  # Все могут создавать папки
+            return [IsAuthenticated()]
         return [IsManagerOrAdmin()]
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+    @action(detail=False, methods=["get"])
+    def map_points(self, request):
+        """GET /api/folders/map_points/ — папки с GPS для карты"""
+        qs = self.get_queryset().filter(latitude__isnull=False)
+        data = []
+        for folder in qs:
+            data.append({
+                "id": folder.id,
+                "name": folder.name,
+                "latitude": folder.latitude,
+                "longitude": folder.longitude,
+                "photo_count": folder.photo_count,
+            })
+        return Response(data)

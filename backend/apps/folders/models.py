@@ -14,6 +14,14 @@ class Folder(models.Model):
         related_name="folders",
         verbose_name="Создатель",
     )
+    latitude = models.FloatField(
+        "Широта", null=True, blank=True,
+        help_text="GPS координата здания/объекта",
+    )
+    longitude = models.FloatField(
+        "Долгота", null=True, blank=True,
+        help_text="GPS координата здания/объекта",
+    )
     created_at = models.DateTimeField("Создано", auto_now_add=True)
     updated_at = models.DateTimeField("Обновлено", auto_now=True)
 

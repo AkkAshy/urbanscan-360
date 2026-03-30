@@ -1,5 +1,5 @@
 import api from "./client";
-import type { Folder } from "../types";
+import type { Folder, FolderMapPoint } from "../types";
 
 export async function getFolders(): Promise<Folder[]> {
   const { data } = await api.get<Folder[]>("/folders/");
@@ -21,10 +21,16 @@ export async function createFolder(
 
 export async function updateFolder(
   id: number,
-  data: { name?: string; description?: string }
+  data: { name?: string; description?: string; latitude?: number | null; longitude?: number | null }
 ): Promise<Folder> {
   const { data: folder } = await api.patch<Folder>(`/folders/${id}/`, data);
   return folder;
+}
+
+/** Папки с GPS для карты */
+export async function getFolderMapPoints(): Promise<FolderMapPoint[]> {
+  const { data } = await api.get<FolderMapPoint[]>("/folders/map_points/");
+  return data;
 }
 
 export async function deleteFolder(id: number): Promise<void> {

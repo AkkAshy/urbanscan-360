@@ -18,6 +18,8 @@ class FolderSerializer(serializers.ModelSerializer):
             "created_by",
             "created_by_name",
             "photo_count",
+            "latitude",
+            "longitude",
             "created_at",
             "updated_at",
         ]

@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 
 interface Props {
   photoUrl: string;
+  /** Ref на a-scene элемент (для LinkArrows / LinkEditor) */
+  sceneRef?: React.MutableRefObject<HTMLElement | null>;
 }
 
 /**
@@ -9,7 +11,7 @@ interface Props {
  * Используем vanilla A-Frame через DOM API (НЕ aframe-react).
  * Сцена создаётся ОДИН раз, при смене фото обновляется только src у <a-sky>.
  */
-export function AFrameScene({ photoUrl }: Props) {
+export function AFrameScene({ photoUrl, sceneRef }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneCreatedRef = useRef(false);
 
@@ -22,16 +24,21 @@ export function AFrameScene({ photoUrl }: Props) {
     scene.setAttribute("embedded", "");
     scene.setAttribute("vr-mode-ui", "enabled: true");
     scene.setAttribute("webxr", "requiredFeatures: local-floor;");
-    // Отключаем стандартные логи A-Frame
     scene.setAttribute("renderer", "antialias: true; colorManagement: true;");
 
+    // Raycaster для мыши — ловит клики по объектам с class="clickable"
+    scene.setAttribute("cursor", "rayOrigin: mouse; fuse: false");
+    scene.setAttribute("raycaster", "objects: .clickable");
+
     // Небо — сфера с 360° текстурой
-    // Увеличиваем segmentsHeight для плавной геометрии на полюсах (верх/низ)
     const sky = document.createElement("a-sky");
     sky.setAttribute("id", "photo-sky");
     sky.setAttribute("src", photoUrl);
     sky.setAttribute("rotation", "0 0 0");
-    sky.setAttribute("geometry", "primitive: sphere; radius: 500; segmentsWidth: 64; segmentsHeight: 64");
+    sky.setAttribute(
+      "geometry",
+      "primitive: sphere; radius: 500; segmentsWidth: 64; segmentsHeight: 64"
+    );
 
     // Камера с look-controls для гироскопа/WebXR
     const camera = document.createElement("a-camera");
@@ -46,8 +53,13 @@ export function AFrameScene({ photoUrl }: Props) {
     scene.appendChild(camera);
     containerRef.current.appendChild(scene);
 
+    // Передаём ref на сцену наружу
+    if (sceneRef) {
+      sceneRef.current = scene;
+    }
+
     return () => {
-      // Cleanup при unmount
+      if (sceneRef) sceneRef.current = null;
       if (scene.parentNode) {
         scene.parentNode.removeChild(scene);
       }

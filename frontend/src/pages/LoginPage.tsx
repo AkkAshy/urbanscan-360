@@ -15,7 +15,7 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   // Уже залогинен — редирект
-  if (user) return <Navigate to="/viewer" replace />;
+  if (user) return <Navigate to="/upload" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +23,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(username, password);
-      navigate("/viewer");
+      navigate("/upload");
     } catch {
       setError("Неверный логин или пароль");
     } finally {
