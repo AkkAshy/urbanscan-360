@@ -60,7 +60,7 @@ export function MapPage() {
 
   // Клик по маркеру → переход во вьювер
   const openInViewer = useCallback(
-    (folderId: number) => {
+    (_folderId: number) => {
       navigate(`/upload`);
     },
     [navigate]

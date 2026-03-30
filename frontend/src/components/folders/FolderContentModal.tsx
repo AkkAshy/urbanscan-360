@@ -4,7 +4,7 @@ import { getPhotos, uploadPhotos } from "../../api/photos";
 import { deleteFolder, updateFolder } from "../../api/folders";
 import { useAuthStore } from "../../store/authStore";
 import type { Folder, Photo } from "../../types";
-import { Modal, type OriginRect } from "../ui/Modal";
+import { Modal } from "../ui/Modal";
 import { PhotoGrid } from "../photos/PhotoGrid";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
 import { toast } from "../../store/toastStore";

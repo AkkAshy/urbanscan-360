@@ -2,8 +2,12 @@ import axios from "axios";
 
 /* Axios клиент с JWT interceptor */
 
+const API_BASE = import.meta.env.PROD
+  ? "https://urban.saribek.uz/api"
+  : "/api";
+
 const api = axios.create({
-  baseURL: "/api",
+  baseURL: API_BASE,
   headers: { "Content-Type": "application/json" },
 });
 
@@ -34,7 +38,7 @@ api.interceptors.response.use(
       }
 
       try {
-        const { data } = await axios.post("/api/auth/refresh/", { refresh });
+        const { data } = await axios.post(`${API_BASE}/auth/refresh/`, { refresh });
         localStorage.setItem("access_token", data.access);
         originalRequest.headers.Authorization = `Bearer ${data.access}`;
         return api(originalRequest);
