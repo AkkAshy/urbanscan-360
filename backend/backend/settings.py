@@ -1,13 +1,17 @@
+import os
 from datetime import timedelta
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = "django-insecure-u@_#95p0$()h)q@#2$wta5))sypscevb1dq9q^+dvzufr=k_0&"
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-u@_#95p0$()h)q@#2$wta5))sypscevb1dq9q^+dvzufr=k_0&")
 
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 
 # --- Apps ---
 INSTALLED_APPS = [
@@ -58,12 +62,24 @@ TEMPLATES = [
 WSGI_APPLICATION = "backend.wsgi.application"
 
 # --- Database ---
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+if os.getenv("DB_NAME"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME"),
+            "USER": os.getenv("DB_USER", "postgres"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # --- Auth ---
 AUTH_USER_MODEL = "accounts.User"
@@ -88,7 +104,8 @@ SIMPLE_JWT = {
 }
 
 # --- CORS ---
-CORS_ALLOW_ALL_ORIGINS = True  # Dev only
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 # --- i18n ---
 LANGUAGE_CODE = "ru"
@@ -98,6 +115,7 @@ USE_TZ = True
 
 # --- Static & Media ---
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
