@@ -18,6 +18,7 @@ import { NavigationArrows } from "../components/viewer/NavigationArrows";
 import { ThumbnailStrip } from "../components/viewer/ThumbnailStrip";
 import { VRMenu } from "../components/viewer/vr/VRMenu";
 import { VRLinkPlacer } from "../components/viewer/vr/VRLinkPlacer";
+import { VRPhotoPicker } from "../components/viewer/vr/VRPhotoPicker";
 import { Button } from "../components/ui/Button";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 
@@ -255,6 +256,15 @@ export function UploadPage() {
           {vrActive && <VRMenu sceneRef={sceneRef} />}
           {vrActive && (
             <VRLinkPlacer sceneRef={sceneRef} arming={linkEditMode && vrPlacing === null} />
+          )}
+          {vrActive && vrPlacing && (
+            <VRPhotoPicker
+              sceneRef={sceneRef}
+              photos={viewerPhotos}
+              currentPhoto={currentViewerPhoto}
+              links={links}
+              onLinksChanged={fetchLinks}
+            />
           )}
 
           {/* Кнопки: закрыть + связи */}
