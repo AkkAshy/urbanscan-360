@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useViewerStore } from "../../store/viewerStore";
 
 interface Props {
   photoUrl: string;
@@ -51,6 +52,26 @@ export function AFrameScene({ photoUrl, sceneRef }: Props) {
 
     scene.appendChild(sky);
     scene.appendChild(camera);
+
+    // VR-контроллеры (две руки): луч + raycaster по .clickable.
+    // На десктопе не мешают (видны только в immersive).
+    for (const hand of ["left", "right"]) {
+      const controller = document.createElement("a-entity");
+      controller.setAttribute("laser-controls", `hand: ${hand}`);
+      controller.setAttribute(
+        "raycaster",
+        "objects: .clickable; far: 100; lineColor: #3b82f6; lineOpacity: 0.85"
+      );
+      controller.setAttribute("data-vr-hand", hand);
+      scene.appendChild(controller);
+    }
+
+    const setVrActive = useViewerStore.getState().setVrActive;
+    const onEnterVR = () => setVrActive(true);
+    const onExitVR = () => setVrActive(false);
+    scene.addEventListener("enter-vr", onEnterVR);
+    scene.addEventListener("exit-vr", onExitVR);
+
     containerRef.current.appendChild(scene);
 
     // Передаём ref на сцену наружу
@@ -59,6 +80,9 @@ export function AFrameScene({ photoUrl, sceneRef }: Props) {
     }
 
     return () => {
+      scene.removeEventListener("enter-vr", onEnterVR);
+      scene.removeEventListener("exit-vr", onExitVR);
+      setVrActive(false);
       if (sceneRef) sceneRef.current = null;
       if (scene.parentNode) {
         scene.parentNode.removeChild(scene);
