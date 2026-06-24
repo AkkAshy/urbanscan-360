@@ -1,9 +1,15 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { mediaUrl } from "../../../api/client";
 import { createPhotoLink } from "../../../api/photos";
 import { useViewerStore } from "../../../store/viewerStore";
 import { yawPitchToXyz } from "../../../utils/sphere";
 import type { PhotoViewer, PhotoLink } from "../../../types";
+
+// VR-эргономика дуги превью
+const EYE_LEVEL = 1.6; // высота глаз, м
+const ARC_RADIUS = 3; // радиус дуги, м
+const TILE_W = 0.8; // ширина превью, м
+const TILE_H = 0.5; // высота превью, м
 
 interface Props {
   sceneRef: React.MutableRefObject<HTMLElement | null>;
@@ -24,7 +30,6 @@ export function VRPhotoPicker({
   links,
   onLinksChanged,
 }: Props) {
-  const containerRef = useRef<HTMLElement | null>(null);
   const { vrPlacing, setVrPlacing } = useViewerStore();
 
   useEffect(() => {
@@ -38,7 +43,6 @@ export function VRPhotoPicker({
 
     const container = document.createElement("a-entity");
     scene.appendChild(container);
-    containerRef.current = container;
 
     if (available.length === 0) {
       const empty = document.createElement("a-text");
@@ -46,21 +50,23 @@ export function VRPhotoPicker({
       empty.setAttribute("align", "center");
       empty.setAttribute("color", "#FFFFFF");
       empty.setAttribute("width", "4");
-      empty.setAttribute("position", "0 1.6 -3");
+      empty.setAttribute("position", `0 ${EYE_LEVEL} -${ARC_RADIUS}`);
       container.appendChild(empty);
     }
 
-    // Дуга превью на уровне глаз, радиус 3 м, шаг 18°
+    // Адаптивный шаг: дуга всегда укладывается в ±90°
+    const spread = Math.min(18, 180 / Math.max(available.length, 1));
+
+    // Дуга превью на уровне глаз, радиус ARC_RADIUS м
     available.forEach((photo, i) => {
-      const spread = 18;
       const yaw = (i - (available.length - 1) / 2) * spread;
-      const { x, y, z } = yawPitchToXyz(yaw < 0 ? yaw + 360 : yaw, 0, 3);
+      const { x, y, z } = yawPitchToXyz(yaw < 0 ? yaw + 360 : yaw, 0, ARC_RADIUS);
 
       const tile = document.createElement("a-image");
       tile.setAttribute("src", mediaUrl(photo.thumbnail || photo.image));
-      tile.setAttribute("width", "0.8");
-      tile.setAttribute("height", "0.5");
-      tile.setAttribute("position", `${x} ${1.6 + y} ${z}`);
+      tile.setAttribute("width", String(TILE_W));
+      tile.setAttribute("height", String(TILE_H));
+      tile.setAttribute("position", `${x} ${EYE_LEVEL + y} ${z}`);
       tile.setAttribute("look-at", "[camera]");
       tile.setAttribute("material", "shader: flat; side: double");
       tile.classList.add("clickable");
@@ -89,7 +95,6 @@ export function VRPhotoPicker({
 
     return () => {
       container.parentNode?.removeChild(container);
-      containerRef.current = null;
     };
   }, [sceneRef, vrPlacing, photos, currentPhoto, links, onLinksChanged, setVrPlacing]);
 
