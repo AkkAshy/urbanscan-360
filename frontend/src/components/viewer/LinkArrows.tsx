@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { PhotoLink } from "../../types";
+import { yawPitchToXyz } from "../../utils/sphere";
 
 /** Расстояние стрелок от центра сцены */
 const ARROW_RADIUS = 8;
@@ -51,13 +52,7 @@ export function LinkArrows({
     const arrowSrc = makeArrowSvg(fill, stroke);
 
     links.forEach((link) => {
-      const yawRad = (link.yaw * Math.PI) / 180;
-      const pitchRad = (link.pitch * Math.PI) / 180;
-      const hR = Math.cos(pitchRad) * ARROW_RADIUS;
-
-      const x = Math.sin(yawRad) * hR;
-      const y = Math.sin(pitchRad) * ARROW_RADIUS;
-      const z = -Math.cos(yawRad) * hR;
+      const { x, y, z } = yawPitchToXyz(link.yaw, link.pitch, ARROW_RADIUS);
 
       // Контейнер — billboard (всегда смотрит на камеру)
       const arrow = document.createElement("a-entity");
