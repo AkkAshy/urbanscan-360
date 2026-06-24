@@ -23,6 +23,13 @@ class Photo(models.Model):
     thumbnail = models.ImageField(
         "Превью", upload_to="photos/thumbnails/", blank=True, null=True
     )
+    preview = models.ImageField(
+        "Превью для вьювера",
+        upload_to="photos/previews/",
+        blank=True,
+        null=True,
+        help_text="Сжатая 360-версия (~4096px) для быстрой загрузки в сцене",
+    )
     file_size = models.PositiveIntegerField("Размер (байт)", default=0)
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

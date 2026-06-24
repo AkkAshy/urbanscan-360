@@ -16,6 +16,9 @@ import { LinkArrows } from "../components/viewer/LinkArrows";
 import { LinkEditor } from "../components/viewer/LinkEditor";
 import { NavigationArrows } from "../components/viewer/NavigationArrows";
 import { ThumbnailStrip } from "../components/viewer/ThumbnailStrip";
+import { VRMenu } from "../components/viewer/vr/VRMenu";
+import { VRLinkPlacer } from "../components/viewer/vr/VRLinkPlacer";
+import { VRPhotoPicker } from "../components/viewer/vr/VRPhotoPicker";
 import { Button } from "../components/ui/Button";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 
@@ -55,6 +58,8 @@ export function UploadPage() {
     currentIndex,
     links,
     linkEditMode,
+    vrActive,
+    vrPlacing,
     setPhotos: setViewerPhotos,
     goToId,
     fetchLinks,
@@ -111,6 +116,7 @@ export function UploadPage() {
         title: p.title,
         image: mediaUrl(p.image),
         thumbnail: p.thumbnail,
+        preview: p.preview ? mediaUrl(p.preview) : null,
         shot_date: p.shot_date,
         latitude: p.latitude,
         longitude: p.longitude,
@@ -246,33 +252,49 @@ export function UploadPage() {
       {/* === 360° Viewer оверлей с редактором связей === */}
       {viewerOpen && currentViewerPhoto && (
         <div className="fixed inset-0 z-[60] bg-black">
-          <AFrameScene photoUrl={mediaUrl(currentViewerPhoto.image)} sceneRef={sceneRef} />
+          <AFrameScene photoUrl={mediaUrl(currentViewerPhoto.preview || currentViewerPhoto.image)} sceneRef={sceneRef} />
+
+          {vrActive && <VRMenu sceneRef={sceneRef} />}
+          {vrActive && (
+            <VRLinkPlacer sceneRef={sceneRef} arming={linkEditMode && vrPlacing === null} />
+          )}
+          {vrActive && vrPlacing && (
+            <VRPhotoPicker
+              sceneRef={sceneRef}
+              photos={viewerPhotos}
+              currentPhoto={currentViewerPhoto}
+              links={links}
+              onLinksChanged={fetchLinks}
+            />
+          )}
 
           {/* Кнопки: закрыть + связи */}
-          <div className="absolute top-4 right-4 z-30 flex gap-2">
-            <button
-              onClick={() => setLinkEditMode(!linkEditMode)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm backdrop-blur-sm cursor-pointer transition-colors ${
-                linkEditMode
-                  ? "bg-orange-500/90 text-white"
-                  : "bg-black/50 hover:bg-black/70 text-white"
-              }`}
-              title={linkEditMode ? "Выключить режим связей" : "Связать фото"}
-            >
-              <Link2 size={14} />
-              {linkEditMode ? "Выйти" : "Связи"}
-            </button>
-            <button
-              onClick={() => {
-                setViewerOpen(false);
-                setLinkEditMode(false);
-              }}
-              className="p-2 rounded-full bg-black/50 hover:bg-black/70 text-white backdrop-blur-sm transition-all cursor-pointer"
-              title="Закрыть (Esc)"
-            >
-              <X size={24} />
-            </button>
-          </div>
+          {!vrActive && (
+            <div className="absolute top-4 right-4 z-30 flex gap-2">
+              <button
+                onClick={() => setLinkEditMode(!linkEditMode)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm backdrop-blur-sm cursor-pointer transition-colors ${
+                  linkEditMode
+                    ? "bg-orange-500/90 text-white"
+                    : "bg-black/50 hover:bg-black/70 text-white"
+                }`}
+                title={linkEditMode ? "Выключить режим связей" : "Связать фото"}
+              >
+                <Link2 size={14} />
+                {linkEditMode ? "Выйти" : "Связи"}
+              </button>
+              <button
+                onClick={() => {
+                  setViewerOpen(false);
+                  setLinkEditMode(false);
+                }}
+                className="p-2 rounded-full bg-black/50 hover:bg-black/70 text-white backdrop-blur-sm transition-all cursor-pointer"
+                title="Закрыть (Esc)"
+              >
+                <X size={24} />
+              </button>
+            </div>
+          )}
 
           {/* 3D стрелки хотспотов */}
           {links.length > 0 && (
@@ -293,7 +315,7 @@ export function UploadPage() {
           )}
 
           {/* Редактор связей */}
-          {linkEditMode && (
+          {!vrActive && linkEditMode && (
             <LinkEditor
               sceneRef={sceneRef}
               photos={viewerPhotos}
@@ -304,14 +326,16 @@ export function UploadPage() {
           )}
 
           {/* HTML стрелки — fallback когда нет хотспотов и не в режиме редактирования */}
-          {links.length === 0 && !linkEditMode && <NavigationArrows />}
+          {!vrActive && links.length === 0 && !linkEditMode && <NavigationArrows />}
 
-          <ThumbnailStrip />
+          {!vrActive && <ThumbnailStrip />}
 
           {/* Счётчик */}
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-full bg-black/50 text-white text-sm backdrop-blur-sm">
-            {currentIndex + 1} / {viewerPhotos.length}
-          </div>
+          {!vrActive && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-3 py-1 rounded-full bg-black/50 text-white text-sm backdrop-blur-sm">
+              {currentIndex + 1} / {viewerPhotos.length}
+            </div>
+          )}
         </div>
       )}
     </AppLayout>

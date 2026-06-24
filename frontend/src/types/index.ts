@@ -28,6 +28,7 @@ export interface Photo {
   title: string;
   image: string;
   thumbnail: string | null;
+  preview: string | null;
   file_size: number;
   uploaded_by: number | null;
   uploaded_by_name: string;
@@ -42,6 +43,7 @@ export interface PhotoViewer {
   title: string;
   image: string;
   thumbnail: string | null;
+  preview: string | null;
   shot_date: string | null;
   latitude: number | null;
   longitude: number | null;

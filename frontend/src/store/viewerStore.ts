@@ -10,6 +10,12 @@ interface ViewerState {
   loadingLinks: boolean;
   /** Режим редактирования связей (хотспотов) */
   linkEditMode: boolean;
+  /** В иммерсивном VR ли сейчас (из enter-vr/exit-vr) */
+  vrActive: boolean;
+  /** Ожидается выбор цели связи: точка, куда поставили стрелку */
+  vrPlacing: { yaw: number; pitch: number } | null;
+  setVrActive: (on: boolean) => void;
+  setVrPlacing: (p: { yaw: number; pitch: number } | null) => void;
 
   /** Загрузить фото для вьювера */
   setPhotos: (photos: PhotoViewer[], folderId: number) => void;
@@ -36,6 +42,8 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   links: [],
   loadingLinks: false,
   linkEditMode: false,
+  vrActive: false,
+  vrPlacing: null,
 
   setPhotos: (photos, folderId) => {
     set({ photos, folderId, currentIndex: 0, links: [] });
@@ -101,4 +109,6 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
   },
 
   setLinkEditMode: (on) => set({ linkEditMode: on }),
+  setVrActive: (on) => set({ vrActive: on }),
+  setVrPlacing: (p) => set({ vrPlacing: p }),
 }));

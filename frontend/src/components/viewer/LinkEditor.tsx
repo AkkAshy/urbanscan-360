@@ -4,6 +4,7 @@ import { mediaUrl } from "../../api/client";
 import { createPhotoLink, deletePhotoLink } from "../../api/photos";
 import type { PhotoLink, PhotoViewer } from "../../types";
 import { useViewerStore } from "../../store/viewerStore";
+import { skyPointToYawPitch } from "../../utils/sphere";
 
 interface Props {
   sceneRef: React.MutableRefObject<HTMLElement | null>;
@@ -53,13 +54,7 @@ export function LinkEditor({
       const detail = (e as CustomEvent).detail;
       if (!detail?.intersection?.point) return;
 
-      const { x, y, z } = detail.intersection.point;
-      // Конвертация xyz на сфере → yaw/pitch
-      let yaw = Math.atan2(x, -z) * (180 / Math.PI);
-      if (yaw < 0) yaw += 360;
-      const pitch =
-        Math.atan2(y, Math.sqrt(x * x + z * z)) * (180 / Math.PI);
-
+      const { yaw, pitch } = skyPointToYawPitch(detail.intersection.point);
       setPlacing({ yaw, pitch });
     };
 

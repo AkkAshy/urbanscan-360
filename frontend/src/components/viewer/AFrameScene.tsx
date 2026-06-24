@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useViewerStore } from "../../store/viewerStore";
 
 interface Props {
   photoUrl: string;
@@ -51,6 +52,26 @@ export function AFrameScene({ photoUrl, sceneRef }: Props) {
 
     scene.appendChild(sky);
     scene.appendChild(camera);
+
+    // VR-контроллеры (две руки): луч + raycaster по .clickable.
+    // На десктопе не мешают (видны только в immersive).
+    for (const hand of ["left", "right"]) {
+      const controller = document.createElement("a-entity");
+      controller.setAttribute("laser-controls", `hand: ${hand}`);
+      controller.setAttribute(
+        "raycaster",
+        "objects: .clickable; far: 100; lineColor: #3b82f6; lineOpacity: 0.85"
+      );
+      controller.setAttribute("data-vr-hand", hand);
+      scene.appendChild(controller);
+    }
+
+    const setVrActive = useViewerStore.getState().setVrActive;
+    const onEnterVR = () => setVrActive(true);
+    const onExitVR = () => setVrActive(false);
+    scene.addEventListener("enter-vr", onEnterVR);
+    scene.addEventListener("exit-vr", onExitVR);
+
     containerRef.current.appendChild(scene);
 
     // Передаём ref на сцену наружу
@@ -59,6 +80,9 @@ export function AFrameScene({ photoUrl, sceneRef }: Props) {
     }
 
     return () => {
+      scene.removeEventListener("enter-vr", onEnterVR);
+      scene.removeEventListener("exit-vr", onExitVR);
+      setVrActive(false);
       if (sceneRef) sceneRef.current = null;
       if (scene.parentNode) {
         scene.parentNode.removeChild(scene);
@@ -69,10 +93,27 @@ export function AFrameScene({ photoUrl, sceneRef }: Props) {
 
   // Обновляем текстуру при смене фото (без пересоздания сцены)
   useEffect(() => {
-    const sky = containerRef.current?.querySelector("#photo-sky");
-    if (sky && photoUrl) {
-      sky.setAttribute("src", photoUrl);
+    const container = containerRef.current;
+    const sky = container?.querySelector("#photo-sky");
+    const camera = container?.querySelector("a-camera");
+    if (!sky || !photoUrl) return;
+
+    // Фейд через чёрную сферу у камеры
+    let fade = camera?.querySelector("#fade-sphere") as HTMLElement | null;
+    if (camera && !fade) {
+      fade = document.createElement("a-sphere");
+      fade.setAttribute("id", "fade-sphere");
+      fade.setAttribute("radius", "0.4");
+      fade.setAttribute("material", "color: #000; shader: flat; side: back; opacity: 0; transparent: true");
+      camera.appendChild(fade);
     }
+    fade?.setAttribute("animation__out", "property: material.opacity; to: 1; dur: 120");
+    const t = setTimeout(() => {
+      sky.setAttribute("src", photoUrl);
+      fade?.setAttribute("animation__in", "property: material.opacity; from: 1; to: 0; dur: 200");
+    }, 130);
+
+    return () => clearTimeout(t);
   }, [photoUrl]);
 
   return (
