@@ -104,6 +104,8 @@ def generate_thumbnail(image_file, max_size=(400, 200)):
     try:
         image_file.seek(0)
         img = Image.open(image_file)
+        if img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
         img.thumbnail(max_size, Image.LANCZOS)
 
         buffer = io.BytesIO()
@@ -115,6 +117,37 @@ def generate_thumbnail(image_file, max_size=(400, 200)):
         thumb_name = f"thumb_{original_name}.jpg"
 
         return ContentFile(buffer.read(), name=thumb_name)
+    except Exception:
+        return None
+    finally:
+        image_file.seek(0)
+
+
+def generate_preview(image_file, max_width=4096, quality=85):
+    """
+    Сжатая версия для 360-вьювера: уменьшает огромные equirectangular-оригиналы
+    (10–35 МБ) до ~1–2 МБ. Resize по ширине с сохранением пропорций 2:1.
+    Возвращает ContentFile или None.
+    """
+    try:
+        image_file.seek(0)
+        img = Image.open(image_file)
+        if img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
+
+        # Уменьшаем только если шире целевой ширины (вверх не растягиваем)
+        if img.width > max_width:
+            new_height = round(img.height * max_width / img.width)
+            img = img.resize((max_width, new_height), Image.LANCZOS)
+
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG", quality=quality, optimize=True)
+        buffer.seek(0)
+
+        original_name = os.path.splitext(os.path.basename(image_file.name))[0]
+        preview_name = f"preview_{original_name}.jpg"
+
+        return ContentFile(buffer.read(), name=preview_name)
     except Exception:
         return None
     finally:

@@ -1,7 +1,12 @@
 from rest_framework import serializers
 
 from .models import Photo, PhotoLink
-from .utils import extract_gps_coordinates, extract_shot_date, generate_thumbnail
+from .utils import (
+    extract_gps_coordinates,
+    extract_shot_date,
+    generate_preview,
+    generate_thumbnail,
+)
 
 
 class PhotoSerializer(serializers.ModelSerializer):
@@ -19,6 +24,7 @@ class PhotoSerializer(serializers.ModelSerializer):
             "title",
             "image",
             "thumbnail",
+            "preview",
             "file_size",
             "uploaded_by",
             "uploaded_by_name",
@@ -30,6 +36,7 @@ class PhotoSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "thumbnail",
+            "preview",
             "file_size",
             "uploaded_by",
             "shot_date",
@@ -62,10 +69,14 @@ class PhotoSerializer(serializers.ModelSerializer):
         photo = Photo(**validated_data)
         photo.save()
 
-        # Генерируем thumbnail после сохранения
+        # Генерируем preview (для вьювера) + thumbnail (для грида) после сохранения
+        preview = generate_preview(image_file)
+        if preview:
+            photo.preview.save(preview.name, preview, save=False)
         thumb = generate_thumbnail(image_file)
         if thumb:
-            photo.thumbnail.save(thumb.name, thumb, save=True)
+            photo.thumbnail.save(thumb.name, thumb, save=False)
+        photo.save(update_fields=["preview", "thumbnail"])
 
         return photo
 
@@ -103,4 +114,4 @@ class PhotoViewerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Photo
-        fields = ["id", "title", "image", "thumbnail", "shot_date", "latitude", "longitude"]
+        fields = ["id", "title", "image", "thumbnail", "preview", "shot_date", "latitude", "longitude"]

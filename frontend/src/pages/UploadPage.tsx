@@ -116,6 +116,7 @@ export function UploadPage() {
         title: p.title,
         image: mediaUrl(p.image),
         thumbnail: p.thumbnail,
+        preview: p.preview ? mediaUrl(p.preview) : null,
         shot_date: p.shot_date,
         latitude: p.latitude,
         longitude: p.longitude,
@@ -251,7 +252,7 @@ export function UploadPage() {
       {/* === 360° Viewer оверлей с редактором связей === */}
       {viewerOpen && currentViewerPhoto && (
         <div className="fixed inset-0 z-[60] bg-black">
-          <AFrameScene photoUrl={mediaUrl(currentViewerPhoto.image)} sceneRef={sceneRef} />
+          <AFrameScene photoUrl={mediaUrl(currentViewerPhoto.preview || currentViewerPhoto.image)} sceneRef={sceneRef} />
 
           {vrActive && <VRMenu sceneRef={sceneRef} />}
           {vrActive && (
