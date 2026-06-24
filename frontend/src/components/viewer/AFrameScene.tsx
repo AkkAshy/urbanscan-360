@@ -93,10 +93,27 @@ export function AFrameScene({ photoUrl, sceneRef }: Props) {
 
   // Обновляем текстуру при смене фото (без пересоздания сцены)
   useEffect(() => {
-    const sky = containerRef.current?.querySelector("#photo-sky");
-    if (sky && photoUrl) {
-      sky.setAttribute("src", photoUrl);
+    const container = containerRef.current;
+    const sky = container?.querySelector("#photo-sky");
+    const camera = container?.querySelector("a-camera");
+    if (!sky || !photoUrl) return;
+
+    // Фейд через чёрную сферу у камеры
+    let fade = camera?.querySelector("#fade-sphere") as HTMLElement | null;
+    if (camera && !fade) {
+      fade = document.createElement("a-sphere");
+      fade.setAttribute("id", "fade-sphere");
+      fade.setAttribute("radius", "0.4");
+      fade.setAttribute("material", "color: #000; shader: flat; side: back; opacity: 0; transparent: true");
+      camera.appendChild(fade);
     }
+    fade?.setAttribute("animation__out", "property: material.opacity; to: 1; dur: 120");
+    const t = setTimeout(() => {
+      sky.setAttribute("src", photoUrl);
+      fade?.setAttribute("animation__in", "property: material.opacity; from: 1; to: 0; dur: 200");
+    }, 130);
+
+    return () => clearTimeout(t);
   }, [photoUrl]);
 
   return (
