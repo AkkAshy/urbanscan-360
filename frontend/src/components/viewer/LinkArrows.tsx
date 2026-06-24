@@ -92,6 +92,14 @@ export function LinkArrows({
           onNavigate(link.to_photo);
         }
       });
+
+      // Hover: увеличиваем стрелку при наведении (мышь и laser-controls)
+      arrow.addEventListener("mouseenter", () => {
+        img.setAttribute("scale", "1.2 1.2 1.2");
+      });
+      arrow.addEventListener("mouseleave", () => {
+        img.setAttribute("scale", "1 1 1");
+      });
     });
 
     return () => {
