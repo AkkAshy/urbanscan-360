@@ -62,7 +62,7 @@ export function GeoVRRoom({ sceneRef, folders, onSelect }: Props) {
 
         const card = document.createElement("a-entity");
         card.setAttribute("position", `${x} ${EYE_LEVEL + y} ${z}`);
-        card.setAttribute("look-at", "[camera]");
+        card.setAttribute("billboard", "");
         card.classList.add("clickable");
 
         // Белая рамка-подложка под превью (контраст на тёмном небе)
