@@ -39,7 +39,11 @@ export function AFrameScene({ photoUrl, sceneRef, onExit }: Props) {
     // Небо — сфера с 360° текстурой
     const sky = document.createElement("a-sky");
     sky.setAttribute("id", "photo-sky");
-    sky.setAttribute("src", photoUrl);
+    if (photoUrl) {
+      sky.setAttribute("src", photoUrl);
+    } else {
+      sky.setAttribute("color", "#0b1020");
+    }
     sky.setAttribute("rotation", "0 0 0");
     sky.setAttribute(
       "geometry",
@@ -125,7 +129,7 @@ export function AFrameScene({ photoUrl, sceneRef, onExit }: Props) {
     const container = containerRef.current;
     const sky = container?.querySelector("#photo-sky");
     const camera = container?.querySelector("a-camera");
-    if (!sky || !photoUrl) return;
+    if (!sky) return;
 
     // Фейд через чёрную сферу у камеры
     let fade = camera?.querySelector("#fade-sphere") as HTMLElement | null;
@@ -138,7 +142,13 @@ export function AFrameScene({ photoUrl, sceneRef, onExit }: Props) {
     }
     fade?.setAttribute("animation__out", "property: material.opacity; to: 1; dur: 120");
     const t = setTimeout(() => {
-      sky.setAttribute("src", photoUrl);
+      if (photoUrl) {
+        sky.removeAttribute("color");
+        sky.setAttribute("src", photoUrl);
+      } else {
+        sky.removeAttribute("src");
+        sky.setAttribute("color", "#0b1020");
+      }
       fade?.setAttribute("animation__in", "property: material.opacity; from: 1; to: 0; dur: 200");
     }, 130);
 
