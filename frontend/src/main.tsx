@@ -1,5 +1,7 @@
 // A-Frame нужно импортировать ДО React — регистрирует кастомные HTML-элементы
 import "aframe";
+// Регистрируем свой billboard-компонент (в A-Frame нет встроенного look-at)
+import "./utils/aframe-billboard";
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
