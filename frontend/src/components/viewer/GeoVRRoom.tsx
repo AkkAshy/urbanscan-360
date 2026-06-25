@@ -19,63 +19,86 @@ const EYE_LEVEL = 1.6;
  */
 export function GeoVRRoom({ sceneRef, folders, onSelect }: Props) {
   useEffect(() => {
-    const scene = sceneRef.current;
+    const scene = sceneRef.current as
+      | (HTMLElement & { hasLoaded?: boolean })
+      | null;
     if (!scene) return;
 
-    const container = document.createElement("a-entity");
-    scene.appendChild(container);
+    let container: HTMLElement | null = null;
 
-    const withGps = folders.filter(
-      (f): f is FolderMapPoint & { latitude: number; longitude: number } =>
-        f.latitude != null && f.longitude != null
-    );
+    // Карточки строим ТОЛЬКО когда A-Frame сцена загружена — иначе a-text
+    // (SDF-шрифт) не рендерится в недоинициализированной сцене.
+    const build = () => {
+      container = document.createElement("a-entity");
+      scene.appendChild(container);
 
-    if (withGps.length === 0) {
-      const empty = document.createElement("a-text");
-      empty.setAttribute("value", "Нет объектов с GPS");
-      empty.setAttribute("align", "center");
-      empty.setAttribute("color", "#FFFFFF");
-      empty.setAttribute("width", "4");
-      empty.setAttribute("position", `0 ${EYE_LEVEL} -${ROOM_RADIUS}`);
-      container.appendChild(empty);
-    }
+      const withGps = folders.filter(
+        (f): f is FolderMapPoint & { latitude: number; longitude: number } =>
+          f.latitude != null && f.longitude != null
+      );
 
-    // Известное ограничение: объекты с совпадающим азимутом от офиса
-    // накладываются (одинаковый x/y/z). Для прототипа ОК; mitigation потом —
-    // stagger по высоте/радиусу на основе индекса внутри группы.
-    withGps.forEach((f) => {
-      const target = { lat: f.latitude, lon: f.longitude };
-      const az = bearing(OFFICE_COORDS, target);
-      const dist = haversineKm(OFFICE_COORDS, target);
-      const { x, y, z } = yawPitchToXyz(az, 0, ROOM_RADIUS);
+      if (withGps.length === 0) {
+        const empty = document.createElement("a-text");
+        empty.setAttribute("value", "Нет объектов с GPS");
+        empty.setAttribute("align", "center");
+        empty.setAttribute("color", "#FFFFFF");
+        empty.setAttribute("width", "4");
+        empty.setAttribute("position", `0 ${EYE_LEVEL} -${ROOM_RADIUS}`);
+        container.appendChild(empty);
+        return;
+      }
 
-      const card = document.createElement("a-entity");
-      card.setAttribute("position", `${x} ${EYE_LEVEL + y} ${z}`);
-      card.setAttribute("look-at", "[camera]");
-      card.classList.add("clickable");
+      // Известное ограничение: объекты с совпадающим азимутом от офиса
+      // накладываются (одинаковый x/y/z). Для прототипа ОК; mitigation потом —
+      // stagger по высоте/радиусу на основе индекса внутри группы.
+      withGps.forEach((f) => {
+        const target = { lat: f.latitude, lon: f.longitude };
+        const az = bearing(OFFICE_COORDS, target);
+        const dist = haversineKm(OFFICE_COORDS, target);
+        const { x, y, z } = yawPitchToXyz(az, 0, ROOM_RADIUS);
 
-      const plane = document.createElement("a-plane");
-      plane.setAttribute("width", "1.6");
-      plane.setAttribute("height", "1.1");
-      plane.setAttribute("color", "#1e3a8a");
-      plane.setAttribute("material", "shader: flat; opacity: 0.9");
-      plane.classList.add("clickable");
-      card.appendChild(plane);
+        const card = document.createElement("a-entity");
+        card.setAttribute("position", `${x} ${EYE_LEVEL + y} ${z}`);
+        card.setAttribute("look-at", "[camera]");
+        card.classList.add("clickable");
 
-      const label = document.createElement("a-text");
-      label.setAttribute("value", `${f.name}\n${Math.round(dist)} км`);
-      label.setAttribute("align", "center");
-      label.setAttribute("color", "#FFFFFF");
-      label.setAttribute("width", "3.2");
-      label.setAttribute("position", "0 0 0.02");
-      card.appendChild(label);
+        // Светлая рамка-подложка — контраст на тёмном небе
+        const border = document.createElement("a-plane");
+        border.setAttribute("width", "1.94");
+        border.setAttribute("height", "1.34");
+        border.setAttribute("color", "#FFFFFF");
+        border.setAttribute("material", "shader: flat");
+        border.setAttribute("position", "0 0 -0.02");
+        card.appendChild(border);
 
-      card.addEventListener("click", () => onSelect(f));
-      container.appendChild(card);
-    });
+        // Яркая карточка (акцентный синий)
+        const plane = document.createElement("a-plane");
+        plane.setAttribute("width", "1.8");
+        plane.setAttribute("height", "1.2");
+        plane.setAttribute("color", "#2563eb");
+        plane.setAttribute("material", "shader: flat");
+        plane.classList.add("clickable");
+        card.appendChild(plane);
+
+        const label = document.createElement("a-text");
+        label.setAttribute("value", `${f.name}\n${Math.round(dist)} км`);
+        label.setAttribute("align", "center");
+        label.setAttribute("color", "#FFFFFF");
+        label.setAttribute("width", "3");
+        label.setAttribute("position", "0 0 0.05");
+        card.appendChild(label);
+
+        card.addEventListener("click", () => onSelect(f));
+        container!.appendChild(card);
+      });
+    };
+
+    if (scene.hasLoaded) build();
+    else scene.addEventListener("loaded", build, { once: true });
 
     return () => {
-      container.parentNode?.removeChild(container);
+      scene.removeEventListener("loaded", build);
+      container?.parentNode?.removeChild(container);
     };
   }, [sceneRef, folders, onSelect]);
 
