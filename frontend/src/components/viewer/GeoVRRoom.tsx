@@ -26,7 +26,8 @@ export function GeoVRRoom({ sceneRef, folders, onSelect }: Props) {
     scene.appendChild(container);
 
     const withGps = folders.filter(
-      (f) => f.latitude != null && f.longitude != null
+      (f): f is FolderMapPoint & { latitude: number; longitude: number } =>
+        f.latitude != null && f.longitude != null
     );
 
     if (withGps.length === 0) {
@@ -39,6 +40,9 @@ export function GeoVRRoom({ sceneRef, folders, onSelect }: Props) {
       container.appendChild(empty);
     }
 
+    // Известное ограничение: объекты с совпадающим азимутом от офиса
+    // накладываются (одинаковый x/y/z). Для прототипа ОК; mitigation потом —
+    // stagger по высоте/радиусу на основе индекса внутри группы.
     withGps.forEach((f) => {
       const target = { lat: f.latitude, lon: f.longitude };
       const az = bearing(OFFICE_COORDS, target);
