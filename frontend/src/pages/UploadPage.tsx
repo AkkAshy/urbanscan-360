@@ -10,7 +10,6 @@ import { AppLayout } from "../components/layout/AppLayout";
 import { AnimatedFolder } from "../components/ui/3d-folder";
 import { CreateFolderModal } from "../components/folders/CreateFolderModal";
 import { FolderContentModal } from "../components/folders/FolderContentModal";
-import { PhotoLightbox } from "../components/photos/PhotoLightbox";
 import { AFrameScene } from "../components/viewer/AFrameScene";
 import { LinkArrows } from "../components/viewer/LinkArrows";
 import { LinkEditor } from "../components/viewer/LinkEditor";
@@ -44,11 +43,6 @@ export function UploadPage() {
   const [openFolder, setOpenFolder] = useState<Folder | null>(null);
   const [openFolderGradient, setOpenFolderGradient] = useState("");
   const [folderOriginRect, setFolderOriginRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-
-  // Лайтбокс для просмотра фото
-  const [lightboxPhotos, setLightboxPhotos] = useState<Photo[]>([]);
-  const [lightboxIndex, setLightboxIndex] = useState(0);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   // 360° вьювер
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -98,20 +92,10 @@ export function UploadPage() {
     loadFolders();
   }, []);
 
-  // Клик на фото — открываем лайтбокс
-  const handlePhotoClick = useCallback(
-    (_photo: Photo, index: number, allPhotos: Photo[]) => {
-      setLightboxPhotos(allPhotos);
-      setLightboxIndex(index);
-      setLightboxOpen(true);
-    },
-    []
-  );
-
-  // Из лайтбокса — переход в 360° режим
-  const handleView360 = useCallback(
-    (_photo: Photo, index: number) => {
-      const viewerData = lightboxPhotos.map((p) => ({
+  // Открыть 360-вьювер напрямую (минуя плоский лайтбокс)
+  const openViewer = useCallback(
+    (photos: Photo[], index: number, folderId: number) => {
+      const viewerData = photos.map((p) => ({
         id: p.id,
         title: p.title,
         image: mediaUrl(p.image),
@@ -121,12 +105,19 @@ export function UploadPage() {
         latitude: p.latitude,
         longitude: p.longitude,
       }));
-      setViewerPhotos(viewerData, openFolder?.id ?? 0);
+      setViewerPhotos(viewerData, folderId);
       useViewerStore.getState().goTo(index);
-      setLightboxOpen(false);
       setViewerOpen(true);
     },
-    [lightboxPhotos, openFolder, setViewerPhotos]
+    [setViewerPhotos]
+  );
+
+  // Клик на фото в модалке папки — сразу в 360-вьювер
+  const handlePhotoClick = useCallback(
+    (_photo: Photo, index: number, allPhotos: Photo[]) => {
+      openViewer(allPhotos, index, openFolder?.id ?? 0);
+    },
+    [openViewer, openFolder]
   );
 
   // Закрытие вьювера по Escape
@@ -209,9 +200,7 @@ export function UploadPage() {
                       className="w-full"
                       onProjectClick={photos.length > 0 ? (photoIndex) => {
                         setOpenFolder(folder);
-                        setLightboxPhotos(photos);
-                        setLightboxIndex(photoIndex);
-                        setLightboxOpen(true);
+                        openViewer(photos, photoIndex, folder.id);
                       } : undefined}
                     />
                   </div>
@@ -238,16 +227,6 @@ export function UploadPage() {
         gradient={openFolderGradient}
         originRect={folderOriginRect}
       />
-
-      {/* === Лайтбокс фото === */}
-      {lightboxOpen && lightboxPhotos.length > 0 && (
-        <PhotoLightbox
-          photos={lightboxPhotos}
-          currentIndex={lightboxIndex}
-          onClose={() => setLightboxOpen(false)}
-          onView360={handleView360}
-        />
-      )}
 
       {/* === 360° Viewer оверлей с редактором связей === */}
       {viewerOpen && currentViewerPhoto && (
