@@ -13,6 +13,12 @@ interface Props {
 const ROOM_RADIUS = 6;
 const EYE_LEVEL = 1.6;
 
+/** Белая иконка папки (как на дашборде) — SVG в data-uri для a-image. */
+function folderIconDataUri(): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ffffff"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`;
+  return "data:image/svg+xml," + encodeURIComponent(svg);
+}
+
 /**
  * In-scene «гео-комната»: для каждой папки с GPS ставит карточку на азимуте
  * bearing(офис → объект) вокруг камеры. Клик/луч → onSelect.
@@ -71,7 +77,7 @@ export function GeoVRRoom({ sceneRef, folders, onSelect }: Props) {
         border.setAttribute("position", "0 0 -0.02");
         card.appendChild(border);
 
-        // Яркая карточка (акцентный синий)
+        // Яркая карточка-папка (акцентный синий, как на дашборде)
         const plane = document.createElement("a-plane");
         plane.setAttribute("width", "1.8");
         plane.setAttribute("height", "1.2");
@@ -80,12 +86,25 @@ export function GeoVRRoom({ sceneRef, folders, onSelect }: Props) {
         plane.classList.add("clickable");
         card.appendChild(plane);
 
+        // Иконка папки сверху
+        const icon = document.createElement("a-image");
+        icon.setAttribute("src", folderIconDataUri());
+        icon.setAttribute("width", "0.5");
+        icon.setAttribute("height", "0.5");
+        icon.setAttribute("position", "0 0.24 0.05");
+        icon.setAttribute("material", "transparent: true; shader: flat");
+        card.appendChild(icon);
+
+        // Подпись: название · сколько фото · расстояние
         const label = document.createElement("a-text");
-        label.setAttribute("value", `${f.name}\n${Math.round(dist)} км`);
+        label.setAttribute(
+          "value",
+          `${f.name}\n${f.photo_count} фото · ${Math.round(dist)} км`
+        );
         label.setAttribute("align", "center");
         label.setAttribute("color", "#FFFFFF");
-        label.setAttribute("width", "3");
-        label.setAttribute("position", "0 0 0.05");
+        label.setAttribute("width", "2.8");
+        label.setAttribute("position", "0 -0.32 0.05");
         card.appendChild(label);
 
         card.addEventListener("click", () => onSelect(f));
