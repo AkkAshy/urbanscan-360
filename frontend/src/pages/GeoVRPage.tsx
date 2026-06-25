@@ -65,7 +65,17 @@ export function GeoVRPage() {
   return (
     <AppLayout>
       <div className="fixed inset-0 z-[60] bg-black">
-        <AFrameScene photoUrl={tourUrl} sceneRef={sceneRef} onExit={backToGeo} />
+        <AFrameScene
+          photoUrl={
+            tourUrl === ""
+              ? ""
+              : currentViewerPhoto
+                ? mediaUrl(currentViewerPhoto.preview || currentViewerPhoto.image)
+                : tourUrl
+          }
+          sceneRef={sceneRef}
+          onExit={backToGeo}
+        />
 
         {/* Гео-режим: комната с папками по азимутам */}
         {tourUrl === "" && (
@@ -75,17 +85,14 @@ export function GeoVRPage() {
         {/* 360-тур: стрелки-хотспоты + VR-меню */}
         {tourUrl !== "" && currentViewerPhoto && (
           <>
-            <LinkArrows
-              sceneRef={sceneRef}
-              links={links}
-              onNavigate={(id) => goToId(id)}
-            />
+            <LinkArrows sceneRef={sceneRef} links={links} onNavigate={goToId} />
             {vrActive && <VRMenu sceneRef={sceneRef} />}
           </>
         )}
 
-        {/* HTML-кнопка «назад в гео» (десктоп; в VR — кнопка B / Выход) */}
-        {!vrActive && tourUrl !== "" && (
+        {/* HTML-кнопка «назад в гео» (десктоп; в VR — кнопка B / Выход).
+            Без !vrActive: если VR-сессия отвалится, кнопка остаётся аварийным выходом. */}
+        {tourUrl !== "" && (
           <button
             onClick={backToGeo}
             className="absolute top-4 left-4 z-30 flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm bg-black/60 hover:bg-black/80 text-white backdrop-blur-sm cursor-pointer"
