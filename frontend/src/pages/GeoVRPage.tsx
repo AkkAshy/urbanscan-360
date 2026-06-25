@@ -1,13 +1,12 @@
 import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getFolderMapPoints } from "../api/folders";
-import { getViewerPhotos } from "../api/photos";
+import { getPhotos, getViewerPhotos } from "../api/photos";
 import { mediaUrl } from "../api/client";
-import type { FolderMapPoint } from "../types";
 import { useViewerStore } from "../store/viewerStore";
 import { AppLayout } from "../components/layout/AppLayout";
 import { AFrameScene } from "../components/viewer/AFrameScene";
-import { GeoVRRoom } from "../components/viewer/GeoVRRoom";
+import { GeoVRRoom, type FolderCard } from "../components/viewer/GeoVRRoom";
 import { LinkArrows } from "../components/viewer/LinkArrows";
 import { VRMenu } from "../components/viewer/vr/VRMenu";
 
@@ -16,7 +15,7 @@ import { VRMenu } from "../components/viewer/vr/VRMenu";
  * tourUrl === "" → гео-режим; иначе показываем 360-тур.
  */
 export function GeoVRPage() {
-  const [folders, setFolders] = useState<FolderMapPoint[]>([]);
+  const [folders, setFolders] = useState<FolderCard[]>([]);
   const [tourUrl, setTourUrl] = useState("");
   const sceneRef = useRef<HTMLElement | null>(null);
   const {
@@ -30,12 +29,31 @@ export function GeoVRPage() {
   const currentViewerPhoto = viewerPhotos[currentIndex] ?? null;
 
   useEffect(() => {
-    getFolderMapPoints().then(setFolders).catch(() => setFolders([]));
+    getFolderMapPoints()
+      .then(async (pts) => {
+        // Для каждой папки подтягиваем превью первого фото на карточку
+        const cards = await Promise.all(
+          pts.map(async (f): Promise<FolderCard> => {
+            try {
+              const photos = await getPhotos(f.id, 1);
+              const p = photos[0];
+              const thumbUrl = p
+                ? mediaUrl(p.thumbnail || p.preview || p.image)
+                : null;
+              return { ...f, thumbUrl };
+            } catch {
+              return { ...f, thumbUrl: null };
+            }
+          })
+        );
+        setFolders(cards);
+      })
+      .catch(() => setFolders([]));
   }, []);
 
   // Клик по папке в гео-комнате → грузим её фото → в 360-тур
   const handleSelect = useCallback(
-    async (folder: FolderMapPoint) => {
+    async (folder: FolderCard) => {
       try {
         const photos = await getViewerPhotos(folder.id);
         if (photos.length === 0) return;

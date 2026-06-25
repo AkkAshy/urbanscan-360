@@ -4,24 +4,24 @@ import { bearing, haversineKm } from "../../utils/geo";
 import { yawPitchToXyz } from "../../utils/sphere";
 import type { FolderMapPoint } from "../../types";
 
-interface Props {
-  sceneRef: React.MutableRefObject<HTMLElement | null>;
-  folders: FolderMapPoint[];
-  onSelect: (folder: FolderMapPoint) => void;
-}
-
 const ROOM_RADIUS = 6;
 const EYE_LEVEL = 1.6;
 
-/** Белая иконка папки (как на дашборде) — SVG в data-uri для a-image. */
-function folderIconDataUri(): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ffffff"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>`;
-  return "data:image/svg+xml," + encodeURIComponent(svg);
+/** Папка с подгруженным превью первого фото — для карточки в гео-комнате. */
+export interface FolderCard extends FolderMapPoint {
+  thumbUrl: string | null;
+}
+
+interface Props {
+  sceneRef: React.MutableRefObject<HTMLElement | null>;
+  folders: FolderCard[];
+  onSelect: (folder: FolderCard) => void;
 }
 
 /**
- * In-scene «гео-комната»: для каждой папки с GPS ставит карточку на азимуте
- * bearing(офис → объект) вокруг камеры. Клик/луч → onSelect.
+ * In-scene «гео-комната»: для каждой папки с GPS ставит карточку-превью на
+ * азимуте bearing(офис → объект) вокруг камеры. Клик/луч → onSelect.
+ * Карточка = превью первого фото (растр рендерится надёжно) + рамка + подпись.
  */
 export function GeoVRRoom({ sceneRef, folders, onSelect }: Props) {
   useEffect(() => {
@@ -32,14 +32,14 @@ export function GeoVRRoom({ sceneRef, folders, onSelect }: Props) {
 
     let container: HTMLElement | null = null;
 
-    // Карточки строим ТОЛЬКО когда A-Frame сцена загружена — иначе a-text
-    // (SDF-шрифт) не рендерится в недоинициализированной сцене.
+    // Строим карточки только когда A-Frame сцена загружена — иначе текстуры
+    // a-image / SDF-текст не инициализируются в недогруженной сцене.
     const build = () => {
       container = document.createElement("a-entity");
       scene.appendChild(container);
 
       const withGps = folders.filter(
-        (f): f is FolderMapPoint & { latitude: number; longitude: number } =>
+        (f): f is FolderCard & { latitude: number; longitude: number } =>
           f.latitude != null && f.longitude != null
       );
 
@@ -54,9 +54,6 @@ export function GeoVRRoom({ sceneRef, folders, onSelect }: Props) {
         return;
       }
 
-      // Известное ограничение: объекты с совпадающим азимутом от офиса
-      // накладываются (одинаковый x/y/z). Для прототипа ОК; mitigation потом —
-      // stagger по высоте/радиусу на основе индекса внутри группы.
       withGps.forEach((f) => {
         const target = { lat: f.latitude, lon: f.longitude };
         const az = bearing(OFFICE_COORDS, target);
@@ -65,37 +62,38 @@ export function GeoVRRoom({ sceneRef, folders, onSelect }: Props) {
 
         const card = document.createElement("a-entity");
         card.setAttribute("position", `${x} ${EYE_LEVEL + y} ${z}`);
-        card.setAttribute("billboard", "");
+        card.setAttribute("look-at", "[camera]");
         card.classList.add("clickable");
 
-        // Светлая рамка-подложка — контраст на тёмном небе
+        // Белая рамка-подложка под превью (контраст на тёмном небе)
         const border = document.createElement("a-plane");
         border.setAttribute("width", "1.94");
         border.setAttribute("height", "1.34");
         border.setAttribute("color", "#FFFFFF");
         border.setAttribute("material", "shader: flat");
-        border.setAttribute("position", "0 0 -0.02");
+        border.setAttribute("position", "0 0.12 -0.02");
         card.appendChild(border);
 
-        // Яркая карточка-папка (акцентный синий, как на дашборде)
-        const plane = document.createElement("a-plane");
-        plane.setAttribute("width", "1.8");
-        plane.setAttribute("height", "1.2");
-        plane.setAttribute("color", "#2563eb");
-        plane.setAttribute("material", "shader: flat");
-        plane.classList.add("clickable");
-        card.appendChild(plane);
+        // Превью объекта (растровый thumbnail). Нет фото → синяя заглушка.
+        const preview = document.createElement(f.thumbUrl ? "a-image" : "a-plane");
+        if (f.thumbUrl) preview.setAttribute("src", f.thumbUrl);
+        else preview.setAttribute("color", "#2563eb");
+        preview.setAttribute("width", "1.8");
+        preview.setAttribute("height", "1.2");
+        preview.setAttribute("position", "0 0.12 0");
+        preview.setAttribute("material", "shader: flat");
+        preview.classList.add("clickable");
+        card.appendChild(preview);
 
-        // Иконка папки сверху
-        const icon = document.createElement("a-image");
-        icon.setAttribute("src", folderIconDataUri());
-        icon.setAttribute("width", "0.5");
-        icon.setAttribute("height", "0.5");
-        icon.setAttribute("position", "0 0.24 0.05");
-        icon.setAttribute("material", "transparent: true; shader: flat");
-        card.appendChild(icon);
+        // Тёмная плашка под превью + подпись
+        const labelBg = document.createElement("a-plane");
+        labelBg.setAttribute("width", "1.94");
+        labelBg.setAttribute("height", "0.46");
+        labelBg.setAttribute("color", "#0b1020");
+        labelBg.setAttribute("material", "shader: flat; opacity: 0.95");
+        labelBg.setAttribute("position", "0 -0.78 0");
+        card.appendChild(labelBg);
 
-        // Подпись: название · сколько фото · расстояние
         const label = document.createElement("a-text");
         label.setAttribute(
           "value",
@@ -103,8 +101,8 @@ export function GeoVRRoom({ sceneRef, folders, onSelect }: Props) {
         );
         label.setAttribute("align", "center");
         label.setAttribute("color", "#FFFFFF");
-        label.setAttribute("width", "2.8");
-        label.setAttribute("position", "0 -0.32 0.05");
+        label.setAttribute("width", "3");
+        label.setAttribute("position", "0 -0.78 0.02");
         card.appendChild(label);
 
         card.addEventListener("click", () => onSelect(f));
