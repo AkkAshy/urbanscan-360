@@ -146,7 +146,9 @@ export function AFrameScene({ photoUrl, sceneRef, onExit }: Props) {
     fade?.setAttribute("animation__out", "property: material.opacity; from: 0; to: 1; dur: 120");
     const t = setTimeout(() => {
       if (photoUrl) {
-        sky.removeAttribute("color");
+        // ВАЖНО: белый color, иначе material.color (тёмный из гео-режима)
+        // умножится на текстуру и затемнит фото. removeAttribute не сбрасывает.
+        sky.setAttribute("color", "#FFFFFF");
         sky.setAttribute("src", photoUrl);
       } else {
         sky.removeAttribute("src");
