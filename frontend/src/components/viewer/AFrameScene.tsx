@@ -140,7 +140,10 @@ export function AFrameScene({ photoUrl, sceneRef, onExit }: Props) {
       fade.setAttribute("material", "color: #000; shader: flat; side: back; opacity: 0; transparent: true");
       camera.appendChild(fade);
     }
-    fade?.setAttribute("animation__out", "property: material.opacity; to: 1; dur: 120");
+    // removeAttribute перед setAttribute — иначе A-Frame не перезапускает
+    // анимацию при повторном переходе и fade-сфера застревает затемнённой.
+    fade?.removeAttribute("animation__in");
+    fade?.setAttribute("animation__out", "property: material.opacity; from: 0; to: 1; dur: 120");
     const t = setTimeout(() => {
       if (photoUrl) {
         sky.removeAttribute("color");
@@ -149,10 +152,25 @@ export function AFrameScene({ photoUrl, sceneRef, onExit }: Props) {
         sky.removeAttribute("src");
         sky.setAttribute("color", "#0b1020");
       }
+      fade?.removeAttribute("animation__out");
       fade?.setAttribute("animation__in", "property: material.opacity; from: 1; to: 0; dur: 200");
     }, 130);
 
-    return () => clearTimeout(t);
+    // Страховка: после перехода принудительно убираем затемнение,
+    // даже если анимация прояснения не отыграла.
+    const clear = setTimeout(() => {
+      const mesh =
+        fade &&
+        (fade as unknown as {
+          getObject3D?: (t: string) => { material?: { opacity: number } } | null;
+        }).getObject3D?.("mesh");
+      if (mesh && mesh.material) mesh.material.opacity = 0;
+    }, 450);
+
+    return () => {
+      clearTimeout(t);
+      clearTimeout(clear);
+    };
   }, [photoUrl]);
 
   return (
