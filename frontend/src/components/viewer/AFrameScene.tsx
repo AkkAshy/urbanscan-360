@@ -63,6 +63,14 @@ export function AFrameScene({ photoUrl, sceneRef }: Props) {
         "objects: .clickable; far: 100; lineColor: #3b82f6; lineOpacity: 0.85"
       );
       controller.setAttribute("data-vr-hand", hand);
+
+      // Кнопка B на правом Touch-контроллере → выход из VR-режима
+      if (hand === "right") {
+        controller.addEventListener("bbuttondown", () => {
+          (scene as unknown as { exitVR?: () => void }).exitVR?.();
+        });
+      }
+
       scene.appendChild(controller);
     }
 
