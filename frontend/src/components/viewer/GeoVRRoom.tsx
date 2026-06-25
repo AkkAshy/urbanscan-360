@@ -76,12 +76,17 @@ export function GeoVRRoom({ sceneRef, folders, onSelect }: Props) {
 
         // Превью объекта (растровый thumbnail). Нет фото → синяя заглушка.
         const preview = document.createElement(f.thumbUrl ? "a-image" : "a-plane");
-        if (f.thumbUrl) preview.setAttribute("src", f.thumbUrl);
-        else preview.setAttribute("color", "#2563eb");
+        if (f.thumbUrl) {
+          // a-image сам кладёт текстуру в свой material — НЕ переопределять
+          // material, иначе потеряем map и картинка станет белой.
+          preview.setAttribute("src", f.thumbUrl);
+        } else {
+          preview.setAttribute("color", "#2563eb");
+          preview.setAttribute("material", "shader: flat");
+        }
         preview.setAttribute("width", "1.8");
         preview.setAttribute("height", "1.2");
         preview.setAttribute("position", "0 0.12 0");
-        preview.setAttribute("material", "shader: flat");
         preview.classList.add("clickable");
         card.appendChild(preview);
 
