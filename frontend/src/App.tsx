@@ -5,6 +5,7 @@ import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 import { LoginPage } from "./pages/LoginPage";
 import { UploadPage } from "./pages/UploadPage";
 import { MapPage } from "./pages/MapPage";
+import { GeoVRPage } from "./pages/GeoVRPage";
 import { ToastContainer } from "./components/ui/ToastContainer";
 
 function App() {
@@ -32,6 +33,14 @@ function App() {
           element={
             <ProtectedRoute>
               <MapPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/geo"
+          element={
+            <ProtectedRoute>
+              <GeoVRPage />
             </ProtectedRoute>
           }
         />
