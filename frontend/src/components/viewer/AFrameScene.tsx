@@ -5,6 +5,8 @@ interface Props {
   photoUrl: string;
   /** Ref на a-scene элемент (для LinkArrows / LinkEditor) */
   sceneRef?: React.MutableRefObject<HTMLElement | null>;
+  /** Закрыть вьювер (кнопка B на правом Quest-контроллере) */
+  onExit?: () => void;
 }
 
 /**
@@ -12,9 +14,12 @@ interface Props {
  * Используем vanilla A-Frame через DOM API (НЕ aframe-react).
  * Сцена создаётся ОДИН раз, при смене фото обновляется только src у <a-sky>.
  */
-export function AFrameScene({ photoUrl, sceneRef }: Props) {
+export function AFrameScene({ photoUrl, sceneRef, onExit }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneCreatedRef = useRef(false);
+  // Актуальный onExit, чтобы listener из useEffect[] видел свежий колбэк
+  const onExitRef = useRef(onExit);
+  onExitRef.current = onExit;
 
   // Создаём сцену один раз
   useEffect(() => {
@@ -53,6 +58,10 @@ export function AFrameScene({ photoUrl, sceneRef }: Props) {
     scene.appendChild(sky);
     scene.appendChild(camera);
 
+    // Кнопка B (правый Quest-контроллер) закрывает вьювер: сначала выходим
+    // из immersive (exitVR), затем по событию exit-vr вызываем onExit.
+    let closeRequested = false;
+
     // VR-контроллеры (две руки): луч + raycaster по .clickable.
     // На десктопе не мешают (видны только в immersive).
     for (const hand of ["left", "right"]) {
@@ -64,10 +73,16 @@ export function AFrameScene({ photoUrl, sceneRef }: Props) {
       );
       controller.setAttribute("data-vr-hand", hand);
 
-      // Кнопка B на правом Touch-контроллере → выход из VR-режима
+      // Кнопка B на правом Touch-контроллере → закрыть 360-вьювер (назад к папкам)
       if (hand === "right") {
         controller.addEventListener("bbuttondown", () => {
-          (scene as unknown as { exitVR?: () => void }).exitVR?.();
+          const s = scene as unknown as { exitVR?: () => void };
+          if (s.exitVR) {
+            closeRequested = true;
+            s.exitVR();
+          } else {
+            onExitRef.current?.();
+          }
         });
       }
 
@@ -76,7 +91,13 @@ export function AFrameScene({ photoUrl, sceneRef }: Props) {
 
     const setVrActive = useViewerStore.getState().setVrActive;
     const onEnterVR = () => setVrActive(true);
-    const onExitVR = () => setVrActive(false);
+    const onExitVR = () => {
+      setVrActive(false);
+      if (closeRequested) {
+        closeRequested = false;
+        onExitRef.current?.();
+      }
+    };
     scene.addEventListener("enter-vr", onEnterVR);
     scene.addEventListener("exit-vr", onExitVR);
 

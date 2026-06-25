@@ -231,7 +231,14 @@ export function UploadPage() {
       {/* === 360° Viewer оверлей с редактором связей === */}
       {viewerOpen && currentViewerPhoto && (
         <div className="fixed inset-0 z-[60] bg-black">
-          <AFrameScene photoUrl={mediaUrl(currentViewerPhoto.preview || currentViewerPhoto.image)} sceneRef={sceneRef} />
+          <AFrameScene
+            photoUrl={mediaUrl(currentViewerPhoto.preview || currentViewerPhoto.image)}
+            sceneRef={sceneRef}
+            onExit={() => {
+              setViewerOpen(false);
+              setLinkEditMode(false);
+            }}
+          />
 
           {vrActive && <VRMenu sceneRef={sceneRef} />}
           {vrActive && (
