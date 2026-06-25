@@ -267,10 +267,11 @@ export function UploadPage() {
                   setViewerOpen(false);
                   setLinkEditMode(false);
                 }}
-                className="p-2 rounded-full bg-black/50 hover:bg-black/70 text-white backdrop-blur-sm transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm bg-black/60 hover:bg-black/80 text-white backdrop-blur-sm transition-colors cursor-pointer"
                 title="Закрыть (Esc)"
               >
-                <X size={24} />
+                <X size={16} />
+                Выход
               </button>
             </div>
           )}
