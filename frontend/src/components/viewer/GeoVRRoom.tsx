@@ -213,11 +213,33 @@ export function GeoVRRoom({ sceneRef, folders, onSelect }: Props) {
         const card = document.createElement("a-entity");
         card.setAttribute("position", `${x} ${EYE_LEVEL + y} ${z}`);
         card.setAttribute("billboard", "");
-        // Клик/луч по самой папке (её панели помечены clickable) → открыть тур
-        card.addEventListener("click", () => onSelect(f));
 
         // 3D-папка
-        card.appendChild(buildFolder());
+        const folder = buildFolder();
+        card.appendChild(folder);
+
+        // Крупная невидимая мишень клика перед папкой — легко попасть мышью/
+        // VR-лучом (панели мелкие и с зазорами). colorWrite/depthWrite:false →
+        // невидима и НЕ затемняет (в отличие от opacity:0 — та ломала рендер).
+        const hit = document.createElement("a-plane");
+        hit.setAttribute("width", "1.7");
+        hit.setAttribute("height", "2.0");
+        hit.setAttribute("position", "0 0.3 0.3");
+        hit.setAttribute("material", "shader: flat");
+        hit.classList.add("clickable");
+        hit.addEventListener("loaded", () => {
+          const m = hit.getObject3D("mesh") as unknown as FolderMesh | undefined;
+          if (!m) return;
+          m.material.colorWrite = false;
+          m.material.depthWrite = false;
+          m.renderOrder = -1;
+        });
+        card.appendChild(hit);
+
+        // Клик по карточке → тур; hover → лёгкая подсветка папки (фидбэк наведения)
+        card.addEventListener("click", () => onSelect(f));
+        card.addEventListener("mouseenter", () => folder.setAttribute("scale", "1.07 1.07 1.07"));
+        card.addEventListener("mouseleave", () => folder.setAttribute("scale", "1 1 1"));
 
         // Подпись над папкой (canvas-текстура с кириллицей), всегда поверх
         const label = document.createElement("a-plane");

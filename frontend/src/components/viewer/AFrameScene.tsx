@@ -75,6 +75,13 @@ export function AFrameScene({ photoUrl, sceneRef, onExit }: Props) {
         "raycaster",
         "objects: .clickable; far: 100; lineColor: #3b82f6; lineOpacity: 0.85"
       );
+      // cursor на контроллере: нажатие триггера → click по .clickable под лучом.
+      // Без него laser-controls рисует луч и видит пересечение, но триггер НЕ
+      // эмитит click — в VR на объекты невозможно нажать.
+      controller.setAttribute(
+        "cursor",
+        "fuse: false; rayOrigin: entity; downEvents: triggerdown; upEvents: triggerup"
+      );
       controller.setAttribute("data-vr-hand", hand);
 
       // Кнопка B на правом Touch-контроллере → закрыть 360-вьювер (назад к папкам)
