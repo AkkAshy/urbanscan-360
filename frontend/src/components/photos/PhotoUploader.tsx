@@ -14,13 +14,21 @@ export function PhotoUploader({ folderId, onUploaded }: Props) {
 
   const handleFiles = useCallback(
     async (files: FileList | File[]) => {
-      const images = Array.from(files).filter((f) =>
-        f.type.startsWith("image/")
+      // .insp (Insta360) браузер не помечает как image/* — пропускаем по имени
+      const images = Array.from(files).filter(
+        (f) =>
+          f.type.startsWith("image/") ||
+          f.name.toLowerCase().endsWith(".insp")
       );
       if (images.length === 0) return;
 
+      const hasInsp = images.some((f) => f.name.toLowerCase().endsWith(".insp"));
       setUploading(true);
-      setProgress(`Загружаю ${images.length} файл(ов)...`);
+      setProgress(
+        hasInsp
+          ? `Загружаю ${images.length} файл(ов) — .insp сшиваются в панораму, это дольше...`
+          : `Загружаю ${images.length} файл(ов)...`
+      );
       try {
         await uploadPhotos(folderId, images);
         onUploaded();
@@ -64,7 +72,7 @@ export function PhotoUploader({ folderId, onUploaded }: Props) {
               <input
                 type="file"
                 multiple
-                accept="image/*"
+                accept="image/*,.insp"
                 className="hidden"
                 onChange={(e) => e.target.files && handleFiles(e.target.files)}
                 disabled={uploading}

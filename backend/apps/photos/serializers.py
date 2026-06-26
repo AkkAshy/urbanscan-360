@@ -6,6 +6,8 @@ from .utils import (
     extract_shot_date,
     generate_preview,
     generate_thumbnail,
+    is_insp,
+    stitch_insp,
 )
 
 
@@ -44,26 +46,37 @@ class PhotoSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
+        import os
+
         image_file = validated_data["image"]
+        original_name = image_file.name
 
-        # Авто-заполнение title из имени файла
+        # Авто-заполнение title из имени файла (без расширения)
         if not validated_data.get("title"):
-            import os
-            validated_data["title"] = os.path.splitext(image_file.name)[0]
+            validated_data["title"] = os.path.splitext(original_name)[0]
 
-        # Размер файла
-        validated_data["file_size"] = image_file.size
-
-        # EXIF дата съёмки
+        # EXIF дата + GPS — ИЗ ОРИГИНАЛА (у .insp ffmpeg-стичинг EXIF теряет,
+        # поэтому читаем ДО стичинга).
         shot_date = extract_shot_date(image_file)
         if shot_date:
             validated_data["shot_date"] = shot_date
-
-        # GPS координаты из EXIF
         lat, lon = extract_gps_coordinates(image_file)
         if lat is not None and lon is not None:
             validated_data["latitude"] = lat
             validated_data["longitude"] = lon
+
+        # Insta360 .insp (dual-fisheye) → сшиваем в equirectangular JPEG
+        if is_insp(original_name):
+            stitched = stitch_insp(image_file)
+            if stitched is None:
+                raise serializers.ValidationError(
+                    {"image": "Не удалось обработать .insp — проверь ffmpeg на сервере."}
+                )
+            image_file = stitched
+            validated_data["image"] = stitched
+
+        # Размер файла (уже сшитого, если это был .insp)
+        validated_data["file_size"] = image_file.size
 
         # Создаём фото
         photo = Photo(**validated_data)

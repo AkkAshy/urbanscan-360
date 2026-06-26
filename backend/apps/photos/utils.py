@@ -3,6 +3,8 @@
 import io
 import math
 import os
+import subprocess
+import tempfile
 from datetime import datetime
 
 from django.core.files.base import ContentFile
@@ -151,4 +153,65 @@ def generate_preview(image_file, max_width=4096, quality=85):
     except Exception:
         return None
     finally:
+        image_file.seek(0)
+
+
+# === Insta360 .insp (dual-fisheye → equirectangular) ===
+
+# Параметры стичинга для Insta360 X5. fov=200° подобран по реальным кадрам
+# (швы сходятся чисто). Выход — 8K equirectangular (2:1).
+INSP_FOV = 200
+INSP_WIDTH = 7680
+INSP_HEIGHT = 3840
+
+
+def is_insp(filename):
+    """True если файл — Insta360 .insp (сырой dual-fisheye)."""
+    return bool(filename) and filename.lower().endswith(".insp")
+
+
+def stitch_insp(image_file, fov=INSP_FOV, width=INSP_WIDTH, height=INSP_HEIGHT):
+    """
+    Сшивает dual-fisheye .insp (Insta360) в equirectangular JPEG через ffmpeg
+    (фильтр v360). Возвращает ContentFile (.jpg) или None при ошибке.
+
+    Требует ffmpeg с поддержкой v360 на сервере. EXIF при стичинге теряется —
+    дату/GPS извлекать из ОРИГИНАЛА .insp ДО вызова этой функции.
+    """
+    image_file.seek(0)
+    data = image_file.read()
+    image_file.seek(0)
+
+    tmp_in = tmp_out = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".insp", delete=False) as f:
+            f.write(data)
+            tmp_in = f.name
+        tmp_out = tmp_in + ".jpg"
+
+        subprocess.run(
+            [
+                "ffmpeg", "-y", "-i", tmp_in,
+                "-vf",
+                f"v360=dfisheye:e:ih_fov={fov}:iv_fov={fov}:w={width}:h={height}",
+                "-q:v", "2", "-update", "1", tmp_out,
+            ],
+            check=True,
+            capture_output=True,
+            timeout=180,
+        )
+
+        with open(tmp_out, "rb") as f:
+            buffer = f.read()
+        base = os.path.splitext(os.path.basename(image_file.name))[0]
+        return ContentFile(buffer, name=f"{base}.jpg")
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+        return None
+    finally:
+        for path in (tmp_in, tmp_out):
+            if path:
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
         image_file.seek(0)
