@@ -17,6 +17,10 @@ class PhotoSerializer(serializers.ModelSerializer):
     uploaded_by_name = serializers.CharField(
         source="uploaded_by.username", read_only=True, default=""
     )
+    # ImageField модели тащит validate_image_file_extension (.insp нет в списке
+    # Pillow-форматов). Переопределяем без extension-валидатора: .insp открывается
+    # Pillow и сшивается в create(); обычные форматы Pillow и так распознаёт.
+    image = serializers.ImageField()
 
     class Meta:
         model = Photo
