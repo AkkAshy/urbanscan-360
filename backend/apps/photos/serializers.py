@@ -17,10 +17,11 @@ class PhotoSerializer(serializers.ModelSerializer):
     uploaded_by_name = serializers.CharField(
         source="uploaded_by.username", read_only=True, default=""
     )
-    # ImageField модели тащит validate_image_file_extension (.insp нет в списке
-    # Pillow-форматов). Переопределяем без extension-валидатора: .insp открывается
-    # Pillow и сшивается в create(); обычные форматы Pillow и так распознаёт.
-    image = serializers.ImageField()
+    # Django 6 валидирует расширение ВНУТРИ forms.ImageField.to_python (.insp там
+    # нет), и DRF ImageField это наследует. Берём FileField — он не проверяет
+    # расширение/формат: .insp сшивается в create(), обычные картинки проходят
+    # дальше (Pillow открывает их в generate_preview/thumbnail).
+    image = serializers.FileField()
 
     class Meta:
         model = Photo
