@@ -73,7 +73,9 @@ export function AFrameScene({ photoUrl, sceneRef, onExit }: Props) {
       controller.setAttribute("laser-controls", `hand: ${hand}`);
       controller.setAttribute(
         "raycaster",
-        "objects: .clickable; far: 100; lineColor: #3b82f6; lineOpacity: 0.85"
+        // showLine: true — без него линия не рисуется (default false), даже
+        // если lineColor задан, и луч контроллера в VR не виден.
+        "objects: .clickable; far: 100; showLine: true; lineColor: #3b82f6; lineOpacity: 0.85"
       );
       // cursor на контроллере: нажатие триггера → click по .clickable под лучом.
       // Без него laser-controls рисует луч и видит пересечение, но триггер НЕ
