@@ -26,14 +26,10 @@ if (!AFRAME.components["laser-reticle"]) {
       dot.setAttribute("position", "0 0 -2");
       this.el.appendChild(dot);
       this.dot = dot;
-      dot.addEventListener(
-        "loaded",
-        () => {
-          const mesh = dot.getObject3D("mesh");
-          if (mesh) mesh.renderOrder = 30; // поверх меток
-        },
-        { once: true }
-      );
+      dot.addEventListener("loaded", () => {
+        const mesh = dot.getObject3D("mesh");
+        if (mesh) mesh.renderOrder = 30; // поверх меток
+      });
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tick(this: any) {
