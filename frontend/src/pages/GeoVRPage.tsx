@@ -38,8 +38,11 @@ export function GeoVRPage() {
   const currentViewerPhoto = viewerPhotos[currentIndex] ?? null;
 
   useEffect(() => {
+    // Вход в гео-VR — всегда режим ПРОСМОТРА (не редактирования связей).
+    // Иначе клики/луч случайно создают/удаляют связи, а метки жёлтые.
+    setLinkEditMode(false);
     getFolderMapPoints().then(setFolders).catch(() => setFolders([]));
-  }, []);
+  }, [setLinkEditMode]);
 
   // Клик по папке в гео-комнате → грузим её фото → в 360-тур
   const handleSelect = useCallback(
@@ -57,6 +60,7 @@ export function GeoVRPage() {
           latitude: p.latitude,
           longitude: p.longitude,
         }));
+        setLinkEditMode(false); // тур открывается в режиме просмотра
         setViewerPhotos(viewerData, folder.id);
         useViewerStore.getState().goTo(0);
         const first = viewerData[0];
@@ -65,7 +69,7 @@ export function GeoVRPage() {
         console.error("Гео-VR: не удалось открыть тур:", err);
       }
     },
-    [setViewerPhotos]
+    [setViewerPhotos, setLinkEditMode]
   );
 
   const backToGeo = useCallback(() => {
