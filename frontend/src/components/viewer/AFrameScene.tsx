@@ -84,6 +84,8 @@ export function AFrameScene({ photoUrl, sceneRef, onExit }: Props) {
         "cursor",
         "fuse: false; rayOrigin: entity; downEvents: triggerdown; upEvents: triggerup"
       );
+      // Точка-прицел на конце луча — видна, даже если line laser-controls не рисуется
+      controller.setAttribute("laser-reticle", "");
       controller.setAttribute("data-vr-hand", hand);
 
       // Кнопка B на правом Touch-контроллере → закрыть 360-вьювер (назад к папкам)
