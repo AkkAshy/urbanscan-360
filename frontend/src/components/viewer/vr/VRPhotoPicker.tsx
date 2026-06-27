@@ -67,7 +67,7 @@ export function VRPhotoPicker({
       tile.setAttribute("width", String(TILE_W));
       tile.setAttribute("height", String(TILE_H));
       tile.setAttribute("position", `${x} ${EYE_LEVEL + y} ${z}`);
-      tile.setAttribute("look-at", "[camera]");
+      tile.setAttribute("screen-facing", "");
       tile.setAttribute("material", "shader: flat; side: double");
       tile.classList.add("clickable");
 

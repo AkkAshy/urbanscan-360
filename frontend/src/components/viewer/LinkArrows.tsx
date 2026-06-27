@@ -30,37 +30,57 @@ function roundRectPath(
 }
 
 /**
- * Текстура стрелки-хотспота на canvas (стрелка «вниз/сюда» + подпись цели).
+ * Текстура метки-хотспота на canvas: прицел-перекрестие (круг + крест + точка)
+ * на точке перехода + подпись цели снизу.
  * ВАЖНО: рисуем на canvas, а НЕ через <a-image>+SVG — `a-image` в этой сцене
  * не рендерится (как было с иконкой папки), а canvas-текстура на a-plane — да.
- * Заодно кириллица в подписи работает (системный шрифт, не MSDF a-text).
+ * Кириллица в подписи работает (системный шрифт, не MSDF a-text).
  */
-function makeArrowTexture(title: string, editMode: boolean) {
+function makeMarkerTexture(title: string, editMode: boolean) {
   const W = 256;
-  const H = 320;
+  const H = 300;
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d")!;
 
-  // Стрелка (контур как у прежнего SVG, «иди сюда»)
+  const color = editMode ? "#f97316" : "#3b82f6";
+  const cx = 128;
+  const cy = 106;
+  const R = 64;
+
+  // лёгкое свечение/обводка для контраста на любом фоне
+  ctx.lineCap = "round";
+  ctx.strokeStyle = "rgba(0,0,0,0.45)";
+  ctx.lineWidth = 14;
   ctx.beginPath();
-  ctx.moveTo(128, 232);
-  ctx.lineTo(28, 120);
-  ctx.lineTo(85, 120);
-  ctx.lineTo(85, 28);
-  ctx.lineTo(171, 28);
-  ctx.lineTo(171, 120);
-  ctx.lineTo(228, 120);
-  ctx.closePath();
-  ctx.fillStyle = editMode ? "#f97316" : "#3b82f6";
-  ctx.fill();
-  ctx.lineJoin = "round";
-  ctx.lineWidth = 7;
-  ctx.strokeStyle = editMode ? "#9a3412" : "#1d4ed8";
+  ctx.arc(cx, cy, R, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Подпись цели на тёмной плашке (читаемость на любом фоне)
+  // внешний круг прицела
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 9;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // крест-перекрестие с разрывом в центре (риски от краёв к центру)
+  const gap = 16;
+  const len = R + 18;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - len); ctx.lineTo(cx, cy - gap);
+  ctx.moveTo(cx, cy + gap); ctx.lineTo(cx, cy + len);
+  ctx.moveTo(cx - len, cy); ctx.lineTo(cx - gap, cy);
+  ctx.moveTo(cx + len, cy); ctx.lineTo(cx + gap, cy);
+  ctx.stroke();
+
+  // центральная точка — ровно куда указывает метка
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+  ctx.fill();
+
+  // подпись цели на тёмной плашке
   if (title) {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -72,10 +92,10 @@ function makeArrowTexture(title: string, editMode: boolean) {
     }
     const tw = Math.min(W - 8, ctx.measureText(title).width + 24);
     ctx.fillStyle = "rgba(11,16,32,0.72)";
-    roundRectPath(ctx, (W - tw) / 2, 266, tw, 42, 12);
+    roundRectPath(ctx, (W - tw) / 2, 244, tw, 42, 12);
     ctx.fill();
     ctx.fillStyle = editMode ? "#fdba74" : "#ffffff";
-    ctx.fillText(title, W / 2, 288);
+    ctx.fillText(title, W / 2, 266);
   }
 
   const tex = new THREE.CanvasTexture(canvas);
@@ -95,9 +115,10 @@ interface Props {
 }
 
 /**
- * Навигационные стрелки-хотспоты внутри A-Frame 360° сцены.
- * a-plane с canvas-текстурой (стрелка + подпись), billboard через look-at,
- * позиция по yaw/pitch из PhotoLink. Клик: навигация или удаление связи.
+ * Навигационные метки-хотспоты внутри A-Frame 360° сцены.
+ * a-plane с canvas-текстурой (прицел-перекрестие + подпись), всегда плоско к
+ * экрану (screen-facing), позиция по yaw/pitch из PhotoLink. Клик: навигация
+ * или удаление связи.
  */
 export function LinkArrows({
   sceneRef,
@@ -120,13 +141,14 @@ export function LinkArrows({
       const displayTitle = link.to_title || `Фото #${link.to_photo}`;
 
       const arrow = document.createElement("a-plane");
-      arrow.setAttribute("width", "1.6");
-      arrow.setAttribute("height", "2.0");
+      arrow.setAttribute("width", "1.3");
+      arrow.setAttribute("height", "1.5");
       arrow.setAttribute(
         "position",
         `${x.toFixed(2)} ${y.toFixed(2)} ${z.toFixed(2)}`
       );
-      arrow.setAttribute("look-at", "[camera]");
+      // screen-facing (не look-at): плоскость всегда плоско к экрану, не боком
+      arrow.setAttribute("screen-facing", "");
       arrow.setAttribute("material", "shader: flat; transparent: true; side: double");
       arrow.classList.add("clickable");
       arrow.dataset.linkId = String(link.id);
@@ -137,7 +159,7 @@ export function LinkArrows({
       arrow.addEventListener("loaded", () => {
         const mesh = arrow.getObject3D("mesh") as unknown as ArrowMesh | undefined;
         if (!mesh) return;
-        mesh.material.map = makeArrowTexture(displayTitle, !!editMode);
+        mesh.material.map = makeMarkerTexture(displayTitle, !!editMode);
         mesh.material.color.set("#ffffff");
         mesh.material.transparent = true;
         mesh.material.depthTest = false;

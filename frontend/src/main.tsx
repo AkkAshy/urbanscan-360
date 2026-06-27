@@ -2,6 +2,8 @@
 import "aframe";
 // Регистрируем свой billboard-компонент (в A-Frame нет встроенного look-at)
 import "./utils/aframe-billboard";
+// screen-facing: маркер всегда плоско к экрану (не встаёт боком, как look-at)
+import "./utils/aframe-screen-facing";
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
