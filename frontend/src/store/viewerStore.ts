@@ -2,6 +2,22 @@ import { create } from "zustand";
 import type { PhotoViewer, PhotoLink } from "../types";
 import { getPhotoLinks } from "../api/photos";
 
+/**
+ * Предзагрузка превью связанных панорам — чтобы переход по хотспоту был
+ * мгновенным (картинка уже в кеше браузера к моменту клика по метке).
+ * photos уже содержат полные URL (mediaUrl применён при открытии вьювера).
+ */
+function preloadLinkedPhotos(links: PhotoLink[], photos: PhotoViewer[]) {
+  for (const link of links) {
+    const target = photos.find((p) => p.id === link.to_photo);
+    const url = target?.preview || target?.image;
+    if (url) {
+      const img = new Image();
+      img.src = url;
+    }
+  }
+}
+
 interface ViewerState {
   photos: PhotoViewer[];
   currentIndex: number;
@@ -101,6 +117,8 @@ export const useViewerStore = create<ViewerState>((set, get) => ({
       // Проверяем что фото не сменилось пока ждали ответ
       if (get().currentPhoto()?.id === photo.id) {
         set({ links, loadingLinks: false });
+        // Предзагрузка панорам, на которые ведут метки — мгновенный переход
+        preloadLinkedPhotos(links, get().photos);
       }
     } catch (err) {
       console.error("Ошибка загрузки связей:", err);
