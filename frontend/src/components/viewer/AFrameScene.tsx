@@ -101,6 +101,16 @@ export function AFrameScene({ photoUrl, sceneRef, onExit }: Props) {
         });
       }
 
+      // Левый Touch-контроллер: Y → следующая панорама, X → предыдущая
+      if (hand === "left") {
+        controller.addEventListener("ybuttondown", () =>
+          useViewerStore.getState().next()
+        );
+        controller.addEventListener("xbuttondown", () =>
+          useViewerStore.getState().prev()
+        );
+      }
+
       scene.appendChild(controller);
     }
 
