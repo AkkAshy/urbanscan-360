@@ -84,8 +84,14 @@ export function FolderContentModal({
 
   const handleUpload = async (files: FileList | null) => {
     if (!files || !folder) return;
-    const images = Array.from(files).filter((f) => f.type.startsWith("image/"));
-    if (images.length === 0) return;
+    // .insp (Insta360) браузер не помечает как image/* — пропускаем по имени
+    const images = Array.from(files).filter(
+      (f) => f.type.startsWith("image/") || f.name.toLowerCase().endsWith(".insp")
+    );
+    if (images.length === 0) {
+      if (Array.from(files).length > 0) toast.error("Только фото или .insp");
+      return;
+    }
 
     setUploading(true);
     setUploadProgress(0);
@@ -214,7 +220,7 @@ export function FolderContentModal({
         ref={fileInputRef}
         type="file"
         multiple
-        accept="image/*"
+        accept="*/*"
         className="hidden"
         onChange={(e) => handleUpload(e.target.files)}
       />
