@@ -95,14 +95,26 @@ export function FolderContentModal({
 
     setUploading(true);
     setUploadProgress(0);
+    // Грузим ПО ОДНОМУ: .insp сшивается на сервере ~30с/файл; батч одним запросом
+    // копит время и упирается в таймаут (502 → браузер видит «CORS»). По одному
+    // каждый POST укладывается в лимит + честный прогресс по файлам.
+    let done = 0;
     try {
-      await uploadPhotos(folder.id, images, (percent) => setUploadProgress(percent));
-      toast.success(`Загружено ${images.length} фото`);
+      for (const file of images) {
+        await uploadPhotos(folder.id, [file]);
+        done++;
+        setUploadProgress(Math.round((done / images.length) * 100));
+      }
+      toast.success(`Загружено ${done} фото`);
+    } catch {
+      toast.error(
+        done > 0
+          ? `Загружено ${done} из ${images.length}, дальше ошибка`
+          : "Ошибка при загрузке"
+      );
+    } finally {
       loadPhotos();
       onPhotosChanged?.();
-    } catch {
-      toast.error("Ошибка при загрузке фото");
-    } finally {
       setUploading(false);
       setUploadProgress(0);
     }
