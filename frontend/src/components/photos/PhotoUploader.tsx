@@ -20,7 +20,13 @@ export function PhotoUploader({ folderId, onUploaded }: Props) {
           f.type.startsWith("image/") ||
           f.name.toLowerCase().endsWith(".insp")
       );
-      if (images.length === 0) return;
+      if (images.length === 0) {
+        if (Array.from(files).length > 0) {
+          setProgress("Только фото или .insp");
+          setTimeout(() => setProgress(""), 2500);
+        }
+        return;
+      }
 
       const hasInsp = images.some((f) => f.name.toLowerCase().endsWith(".insp"));
       setUploading(true);
@@ -66,13 +72,15 @@ export function PhotoUploader({ folderId, onUploaded }: Props) {
           progress
         ) : (
           <>
-            Перетащи фото сюда или{" "}
+            Перетащи фото / .insp сюда или{" "}
             <label className="text-[var(--accent)] cursor-pointer hover:underline">
               выбери
+              {/* accept любой файл: image/ * прячет .insp в диалоге (браузер не
+                  считает его картинкой). Любой файл, фильтруем в JS. */}
               <input
                 type="file"
                 multiple
-                accept="image/*,.insp"
+                accept="*/*"
                 className="hidden"
                 onChange={(e) => e.target.files && handleFiles(e.target.files)}
                 disabled={uploading}
