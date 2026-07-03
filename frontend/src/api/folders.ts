@@ -33,6 +33,19 @@ export async function getFolderMapPoints(): Promise<FolderMapPoint[]> {
   return data;
 }
 
+/** Загрузить/заменить план этажа папки (multipart) */
+export async function uploadFloorPlan(
+  folderId: number,
+  file: File
+): Promise<Folder> {
+  const formData = new FormData();
+  formData.append("floor_plan", file);
+  const { data } = await api.patch<Folder>(`/folders/${folderId}/`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
 export async function deleteFolder(id: number): Promise<void> {
   await api.delete(`/folders/${id}/`);
 }

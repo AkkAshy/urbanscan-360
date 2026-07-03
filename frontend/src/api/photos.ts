@@ -47,6 +47,22 @@ export async function deletePhoto(id: number): Promise<void> {
   await api.delete(`/photos/${id}/`);
 }
 
+/**
+ * Поставить/сдвинуть точку фото на плане этажа (координаты 0..1).
+ * null,null — снять точку с плана.
+ */
+export async function setPhotoPoint(
+  photoId: number,
+  x: number | null,
+  y: number | null
+): Promise<Photo> {
+  const { data } = await api.patch<Photo>(`/photos/${photoId}/`, {
+    map_x: x,
+    map_y: y,
+  });
+  return data;
+}
+
 /** Ближайшие фото по GPS (для пространственных стрелок) */
 export async function getPhotoNeighbors(
   photoId: number,

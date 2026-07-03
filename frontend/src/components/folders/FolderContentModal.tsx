@@ -1,4 +1,4 @@
-import { Upload, ImagePlus, Trash2 } from "lucide-react";
+import { Upload, ImagePlus, Trash2, Images, Map as MapIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getPhotos, uploadPhotos } from "../../api/photos";
 import { deleteFolder, updateFolder } from "../../api/folders";
@@ -6,6 +6,7 @@ import { useAuthStore } from "../../store/authStore";
 import type { Folder, Photo } from "../../types";
 import { Modal } from "../ui/Modal";
 import { PhotoGrid } from "../photos/PhotoGrid";
+import { FloorPlanEditor } from "./FloorPlanEditor";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
 import { toast } from "../../store/toastStore";
 
@@ -56,6 +57,8 @@ export function FolderContentModal({
   const [dragging, setDragging] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
+  // Режим содержимого: галерея фото ↔ редактор плана этажа
+  const [planMode, setPlanMode] = useState(false);
   const dragCounterRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
@@ -78,6 +81,7 @@ export function FolderContentModal({
 
   useEffect(() => {
     if (folder) {
+      setPlanMode(false); // открываем папку всегда в галерее
       loadPhotos();
     }
   }, [folder, loadPhotos]);
@@ -203,22 +207,45 @@ export function FolderContentModal({
 
   const headerActions = (
     <div className="flex items-center gap-2">
-      <button
-        onClick={() => fileInputRef.current?.click()}
-        disabled={uploading}
-        className="relative flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs transition-colors cursor-pointer disabled:opacity-70 overflow-hidden"
-      >
-        {uploading && (
-          <div
-            className="absolute inset-0 bg-white/20 transition-all duration-300 ease-out"
-            style={{ width: `${uploadProgress}%` }}
-          />
-        )}
-        <Upload size={14} className="relative z-10" />
-        <span className="relative z-10">
-          {uploading ? `${uploadProgress}%` : "Загрузить"}
-        </span>
-      </button>
+      {/* Переключатель Галерея ↔ План этажа */}
+      <div className="flex items-center rounded-lg bg-white/5 p-0.5 text-xs">
+        <button
+          onClick={() => setPlanMode(false)}
+          className={`flex items-center gap-1 px-2 py-1 rounded-md transition-colors cursor-pointer ${
+            planMode ? "text-white/60 hover:text-white" : "bg-white/15 text-white"
+          }`}
+        >
+          <Images size={13} />
+          Галерея
+        </button>
+        <button
+          onClick={() => setPlanMode(true)}
+          className={`flex items-center gap-1 px-2 py-1 rounded-md transition-colors cursor-pointer ${
+            planMode ? "bg-white/15 text-white" : "text-white/60 hover:text-white"
+          }`}
+        >
+          <MapIcon size={13} />
+          План этажа
+        </button>
+      </div>
+      {!planMode && (
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="relative flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs transition-colors cursor-pointer disabled:opacity-70 overflow-hidden"
+        >
+          {uploading && (
+            <div
+              className="absolute inset-0 bg-white/20 transition-all duration-300 ease-out"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          )}
+          <Upload size={14} className="relative z-10" />
+          <span className="relative z-10">
+            {uploading ? `${uploadProgress}%` : "Загрузить"}
+          </span>
+        </button>
+      )}
       {canManage && (
         <button
           onClick={handleDeleteFolder}
@@ -280,7 +307,20 @@ export function FolderContentModal({
       containerStyle={glassStyle}
       originRect={originRect}
     >
-      {/* Drag & drop зона — оборачивает весь контент */}
+      {planMode ? (
+        loading ? (
+          <div className="flex justify-center py-8">
+            <LoadingSpinner />
+          </div>
+        ) : (
+          <FloorPlanEditor
+            folder={displayFolder}
+            photos={photos}
+            onFolderChanged={() => onPhotosChanged?.()}
+          />
+        )
+      ) : (
+      /* Drag & drop зона — оборачивает весь контент */
       <div
         className="relative h-full"
         onDragEnter={handleDragEnter}
@@ -328,6 +368,7 @@ export function FolderContentModal({
           </div>
         )}
       </div>
+      )}
     </Modal>
   );
 }

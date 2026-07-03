@@ -3,7 +3,7 @@ import { useViewerStore } from "../../store/viewerStore";
 
 interface Props {
   photoUrl: string;
-  /** Ref на a-scene элемент (для LinkArrows / LinkEditor) */
+  /** Ref на a-scene элемент (для оверлеев поверх сцены — мини-карта и т.п.) */
   sceneRef?: React.MutableRefObject<HTMLElement | null>;
   /** Закрыть вьювер (кнопка B на правом Quest-контроллере) */
   onExit?: () => void;
