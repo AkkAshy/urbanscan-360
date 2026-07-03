@@ -1,42 +1,51 @@
 import { useEffect, useRef } from "react";
 import { mediaUrl } from "../../api/client";
 import { useViewerStore } from "../../store/viewerStore";
+import type { FloorPlan } from "../../types";
 
 interface MinimapPhoto {
   id: number;
   title: string;
   map_x: number | null;
   map_y: number | null;
+  floor: number | null;
 }
 
 interface Props {
   sceneRef: React.MutableRefObject<HTMLElement | null>;
-  floorPlan: string | null;
+  floorPlans: FloorPlan[];
   photos: MinimapPhoto[];
   currentId: number | null;
 }
 
 /**
- * Мини-карта плана этажа в VR — «наручная» панель на левом контроллере.
+ * Мини-карта планов этажей в VR — «наручная» панель на левом контроллере.
+ * Показывает план этажа ТЕКУЩЕГО фото (перестраивается при смене этажа).
  *
- * Грабля сцены: <a-image> в этой сцене НЕ рендерится, поэтому план рисуем на
- * <canvas> и вешаем как CanvasTexture на <a-plane>. Всё обёрнуто в try/catch —
- * любая ошибка A-Frame делает компонент no-op и не роняет сцену. Навигация в VR
- * пока линейная (кнопки X/Y на левом контроллере); тап по точке — отдельная задача.
+ * Грабля сцены: <a-image> НЕ рендерится, поэтому план рисуем на <canvas> и вешаем
+ * как CanvasTexture на <a-plane>. Всё в try/catch — ошибка A-Frame = no-op, сцену
+ * не роняет. Навигация в VR пока линейная (X/Y); тап по точке — отдельная задача.
  */
-export function VRMinimap({ sceneRef, floorPlan, photos, currentId }: Props) {
+export function VRMinimap({ sceneRef, floorPlans, photos, currentId }: Props) {
   const vrActive = useViewerStore((s) => s.vrActive);
+
+  const currentPhoto = photos.find((p) => p.id === currentId) ?? null;
+  const activeFloorId = currentPhoto?.floor ?? floorPlans[0]?.id ?? null;
+  const activeFloor = floorPlans.find((f) => f.id === activeFloorId) ?? null;
+  const activeImage = activeFloor?.image ?? null;
 
   // Свежие значения для rAF-цикла без пересоздания плоскости
   const photosRef = useRef(photos);
   const currentIdRef = useRef(currentId);
+  const activeFloorIdRef = useRef(activeFloorId);
   useEffect(() => {
     photosRef.current = photos;
     currentIdRef.current = currentId;
+    activeFloorIdRef.current = activeFloorId;
   });
 
   useEffect(() => {
-    if (!vrActive || !floorPlan) return;
+    if (!vrActive || !activeImage) return;
     const scene = sceneRef.current;
     if (!scene) return;
 
@@ -45,16 +54,12 @@ export function VRMinimap({ sceneRef, floorPlan, photos, currentId }: Props) {
     let disposed = false;
 
     try {
-      // Минимальный тип, чтобы не тянуть типы пакета three
       type CanvasTextureLike = { needsUpdate: boolean };
-      type ThreeLike = {
-        CanvasTexture: new (c: HTMLCanvasElement) => CanvasTextureLike;
-      };
+      type ThreeLike = { CanvasTexture: new (c: HTMLCanvasElement) => CanvasTextureLike };
       const THREE = (window as unknown as { AFRAME?: { THREE?: ThreeLike } }).AFRAME?.THREE;
       const leftHand = scene.querySelector('[data-vr-hand="left"]') as HTMLElement | null;
       if (!THREE || !leftHand) return;
 
-      // Канвас с планом; точки перерисовываем каждый кадр
       const canvas = document.createElement("canvas");
       canvas.width = 256;
       canvas.height = 256;
@@ -64,15 +69,12 @@ export function VRMinimap({ sceneRef, floorPlan, photos, currentId }: Props) {
       const texture = new THREE.CanvasTexture(canvas);
       let planImg: HTMLImageElement | null = null;
       let planTainted = false;
-      let aspect = 1;
 
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.onload = () => {
         planImg = img;
-        aspect = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1;
-        // Проверяем «загрязнение» на ОТДЕЛЬНОМ канвасе (нет CORS-заголовков у media),
-        // чтобы не испортить рабочий канвас-текстуру самой проверкой.
+        // Проверка «загрязнения» на ОТДЕЛЬНОМ канвасе (нет CORS-заголовков у media)
         try {
           const probe = document.createElement("canvas");
           probe.width = 2;
@@ -81,9 +83,9 @@ export function VRMinimap({ sceneRef, floorPlan, photos, currentId }: Props) {
           pctx?.drawImage(img, 0, 0, 2, 2);
           pctx?.getImageData(0, 0, 1, 1);
         } catch {
-          planTainted = true; // рисовать план нельзя — останутся только точки
+          planTainted = true;
         }
-        // Подгоняем плоскость под пропорции плана
+        const aspect = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1;
         try {
           plane?.setAttribute("geometry", `primitive: plane; width: ${0.14 * aspect}; height: 0.14`);
         } catch {
@@ -93,9 +95,8 @@ export function VRMinimap({ sceneRef, floorPlan, photos, currentId }: Props) {
       img.onerror = () => {
         planTainted = true;
       };
-      img.src = mediaUrl(floorPlan);
+      img.src = mediaUrl(activeImage);
 
-      // Плоскость-панель на левом контроллере (как наручные часы)
       plane = document.createElement("a-plane");
       plane.setAttribute("geometry", "primitive: plane; width: 0.14; height: 0.14");
       plane.setAttribute("position", "0.02 0.06 -0.04");
@@ -104,13 +105,12 @@ export function VRMinimap({ sceneRef, floorPlan, photos, currentId }: Props) {
       plane.setAttribute("data-vr-minimap", "");
       leftHand.appendChild(plane);
 
-      // Привязываем нашу CanvasTexture к материалу плоскости
       const attachTexture = () => {
         const mesh = (plane as unknown as {
           getObject3D?: (t: string) => { material?: { map?: unknown; needsUpdate?: boolean } } | null;
         }).getObject3D?.("mesh");
         if (mesh && mesh.material) {
-          (mesh.material as { map?: unknown; needsUpdate?: boolean }).map = texture;
+          (mesh.material as { map?: unknown }).map = texture;
           (mesh.material as { needsUpdate?: boolean }).needsUpdate = true;
           return true;
         }
@@ -122,7 +122,6 @@ export function VRMinimap({ sceneRef, floorPlan, photos, currentId }: Props) {
       const accent = "#3b82f6";
 
       const draw = () => {
-        // Фон
         ctx.fillStyle = "rgba(11, 16, 32, 0.92)";
         ctx.fillRect(0, 0, W, H);
         if (planImg && !planTainted) {
@@ -132,8 +131,10 @@ export function VRMinimap({ sceneRef, floorPlan, photos, currentId }: Props) {
             planTainted = true;
           }
         }
-        // Точки
-        const pts = photosRef.current.filter((p) => p.map_x != null && p.map_y != null);
+        const floorId = activeFloorIdRef.current;
+        const pts = photosRef.current.filter(
+          (p) => p.map_x != null && p.map_y != null && p.floor === floorId
+        );
         const active = pts.find((p) => p.id === currentIdRef.current);
         for (const p of pts) {
           const x = p.map_x! * W;
@@ -147,7 +148,6 @@ export function VRMinimap({ sceneRef, floorPlan, photos, currentId }: Props) {
           ctx.strokeStyle = isActive ? "#ffffff" : accent;
           ctx.stroke();
         }
-        // Сектор направления взгляда на активной точке
         if (active) {
           const cam = scene.querySelector("a-camera") as
             | (Element & { object3D?: { rotation: { y: number } } })
@@ -155,7 +155,7 @@ export function VRMinimap({ sceneRef, floorPlan, photos, currentId }: Props) {
           const yaw = cam?.object3D?.rotation.y ?? 0;
           const x = active.map_x! * W;
           const y = active.map_y! * H;
-          const dir = -yaw - Math.PI / 2; // экранный «вверх» = взгляд по -Z
+          const dir = -yaw - Math.PI / 2;
           const spread = Math.PI / 5;
           const r = 34;
           ctx.beginPath();
@@ -189,7 +189,7 @@ export function VRMinimap({ sceneRef, floorPlan, photos, currentId }: Props) {
         /* no-op */
       }
     };
-  }, [vrActive, floorPlan, sceneRef]);
+  }, [vrActive, activeImage, sceneRef]);
 
   return null;
 }

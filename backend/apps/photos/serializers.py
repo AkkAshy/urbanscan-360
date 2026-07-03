@@ -40,6 +40,7 @@ class PhotoSerializer(serializers.ModelSerializer):
             "longitude",
             "map_x",
             "map_y",
+            "floor",
             "created_at",
         ]
         read_only_fields = [
@@ -51,6 +52,19 @@ class PhotoSerializer(serializers.ModelSerializer):
             "shot_date",
             "created_at",
         ]
+
+    def validate(self, attrs):
+        """Этаж должен принадлежать той же папке, что и фото."""
+        floor = attrs.get("floor")
+        if floor is not None:
+            folder = attrs.get("folder") or (
+                self.instance.folder if self.instance else None
+            )
+            if folder is not None and floor.folder_id != folder.id:
+                raise serializers.ValidationError(
+                    {"floor": "Этаж принадлежит другой папке"}
+                )
+        return attrs
 
     def create(self, validated_data):
         import os
@@ -134,4 +148,4 @@ class PhotoViewerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Photo
-        fields = ["id", "title", "image", "thumbnail", "preview", "shot_date", "latitude", "longitude", "map_x", "map_y"]
+        fields = ["id", "title", "image", "thumbnail", "preview", "shot_date", "latitude", "longitude", "map_x", "map_y", "floor"]

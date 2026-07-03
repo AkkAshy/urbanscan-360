@@ -57,6 +57,15 @@ class Photo(models.Model):
         "Y на плане", null=True, blank=True,
         help_text="Позиция точки на плане этажа, 0..1 (доля высоты)",
     )
+    floor = models.ForeignKey(
+        "folders.FloorPlan",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="photos",
+        verbose_name="Этаж",
+        help_text="На каком этаже (плане) стоит точка этого фото",
+    )
     created_at = models.DateTimeField("Загружено", auto_now_add=True)
 
     class Meta:

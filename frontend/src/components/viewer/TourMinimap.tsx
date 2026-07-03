@@ -1,19 +1,20 @@
 import { Map as MapIcon, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { mediaUrl } from "../../api/client";
+import type { FloorPlan } from "../../types";
 
 interface MinimapPhoto {
   id: number;
   title: string;
   map_x: number | null;
   map_y: number | null;
+  floor: number | null;
 }
 
 interface Props {
-  /** Путь/URL плана этажа (mediaUrl применяется внутри) */
-  floorPlan: string | null;
+  floorPlans: FloorPlan[];
   photos: MinimapPhoto[];
-  /** ID текущей панорамы — подсвечиваем её точку */
+  /** ID текущей панорамы — подсвечиваем её точку + авто-этаж */
   currentId: number | null;
   onNavigate: (photoId: number) => void;
   /** a-scene — читаем yaw камеры для сектора направления взгляда */
@@ -21,17 +22,28 @@ interface Props {
 }
 
 /**
- * Мини-карта плана этажа в углу тура.
- * Точки = панорамы (map_x/map_y), тап по точке = переход.
- * Активная точка подсвечена + сектор направления взгляда (по yaw камеры).
+ * Мини-карта планов этажей в углу тура. У объекта может быть 1+ этажей.
+ * По умолчанию показывает этаж текущего фото; можно переключать табами.
+ * Тап по точке = переход. Активная точка + сектор направления (yaw камеры).
  */
-export function TourMinimap({ floorPlan, photos, currentId, onNavigate, sceneRef }: Props) {
+export function TourMinimap({ floorPlans, photos, currentId, onNavigate, sceneRef }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const wedgeRef = useRef<SVGSVGElement>(null);
 
-  const placed = photos.filter((p) => p.map_x != null && p.map_y != null);
+  const currentPhoto = photos.find((p) => p.id === currentId) ?? null;
 
-  // Крутим сектор по yaw камеры (без re-render — прямо через style)
+  // Активный этаж = ручной выбор (табы) ИЛИ этаж текущего фото. При переходе на
+  // другое фото ручной выбор сбрасываем (паттерн «сброс стейта при смене пропа» —
+  // без setState в эффекте), чтобы мини-карта авто-переключалась на этаж фото.
+  const [manualFloorId, setManualFloorId] = useState<number | null>(null);
+  const [prevCurrentId, setPrevCurrentId] = useState(currentId);
+  if (currentId !== prevCurrentId) {
+    setPrevCurrentId(currentId);
+    setManualFloorId(null);
+  }
+  const activeFloorId = manualFloorId ?? currentPhoto?.floor ?? floorPlans[0]?.id ?? null;
+
+  // Крутим сектор по yaw камеры (без re-render)
   useEffect(() => {
     if (collapsed) return;
     let raf = 0;
@@ -50,8 +62,9 @@ export function TourMinimap({ floorPlan, photos, currentId, onNavigate, sceneRef
     return () => cancelAnimationFrame(raf);
   }, [collapsed, sceneRef]);
 
-  // Нет плана или ни одной точки — карту не показываем
-  if (!floorPlan || placed.length === 0) return null;
+  const placed = photos.filter((p) => p.map_x != null && p.map_y != null && p.floor != null);
+  // Нет ни одного плана или ни одной точки — карту не показываем
+  if (floorPlans.length === 0 || placed.length === 0) return null;
 
   if (collapsed) {
     return (
@@ -66,33 +79,54 @@ export function TourMinimap({ floorPlan, photos, currentId, onNavigate, sceneRef
     );
   }
 
-  const activePoint = placed.find((p) => p.id === currentId);
+  const activeFloor = floorPlans.find((f) => f.id === activeFloorId) ?? floorPlans[0];
+  const floorPoints = placed.filter((p) => p.floor === activeFloor.id);
+  const activePoint = floorPoints.find((p) => p.id === currentId);
 
   return (
     <div className="absolute bottom-4 right-4 z-30 w-52 rounded-xl overflow-hidden bg-black/60 backdrop-blur-sm border border-white/15 shadow-2xl">
       <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-white/10">
-        <span className="flex items-center gap-1.5 text-xs text-white/70">
-          <MapIcon size={13} />
-          План этажа
+        <span className="flex items-center gap-1.5 text-xs text-white/70 truncate">
+          <MapIcon size={13} className="shrink-0" />
+          {activeFloor.name}
         </span>
         <button
           onClick={() => setCollapsed(true)}
-          className="p-0.5 rounded hover:bg-white/10 text-white/50 hover:text-white cursor-pointer"
+          className="p-0.5 rounded hover:bg-white/10 text-white/50 hover:text-white cursor-pointer shrink-0"
           title="Свернуть"
         >
           <X size={14} />
         </button>
       </div>
 
+      {/* Табы этажей (если больше одного) */}
+      {floorPlans.length > 1 && (
+        <div className="flex items-center gap-1 px-1.5 py-1 overflow-x-auto border-b border-white/10">
+          {floorPlans.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setManualFloorId(f.id)}
+              className={`px-2 py-0.5 rounded text-[10px] whitespace-nowrap transition-colors cursor-pointer ${
+                f.id === activeFloor.id
+                  ? "bg-[var(--accent)] text-white"
+                  : "bg-white/10 text-white/60 hover:bg-white/20"
+              }`}
+              title={f.name}
+            >
+              {f.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="relative">
         <img
-          src={mediaUrl(floorPlan)}
-          alt="План этажа"
+          src={mediaUrl(activeFloor.image)}
+          alt={activeFloor.name}
           className="w-full block select-none"
           draggable={false}
         />
-        {/* Точки-панорамы */}
-        {placed.map((p) => {
+        {floorPoints.map((p) => {
           const active = p.id === currentId;
           return (
             <button
@@ -108,7 +142,6 @@ export function TourMinimap({ floorPlan, photos, currentId, onNavigate, sceneRef
             />
           );
         })}
-        {/* Сектор направления взгляда — на активной точке */}
         {activePoint && (
           <svg
             ref={wedgeRef}

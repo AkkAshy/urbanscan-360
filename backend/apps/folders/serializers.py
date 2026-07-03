@@ -1,6 +1,13 @@
 from rest_framework import serializers
 
-from .models import Folder
+from .models import FloorPlan, Folder
+
+
+class FloorPlanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FloorPlan
+        fields = ["id", "folder", "image", "name", "order", "created_at"]
+        read_only_fields = ["id", "created_at"]
 
 
 class FolderSerializer(serializers.ModelSerializer):
@@ -8,6 +15,7 @@ class FolderSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(
         source="created_by.username", read_only=True, default=""
     )
+    floor_plans = FloorPlanSerializer(many=True, read_only=True)
 
     class Meta:
         model = Folder
@@ -20,7 +28,7 @@ class FolderSerializer(serializers.ModelSerializer):
             "photo_count",
             "latitude",
             "longitude",
-            "floor_plan",
+            "floor_plans",
             "created_at",
             "updated_at",
         ]

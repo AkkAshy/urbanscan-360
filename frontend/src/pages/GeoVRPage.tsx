@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getFolderMapPoints, getFolder } from "../api/folders";
 import { getViewerPhotos } from "../api/photos";
 import { mediaUrl } from "../api/client";
-import type { FolderMapPoint } from "../types";
+import type { FloorPlan, FolderMapPoint } from "../types";
 import { useViewerStore } from "../store/viewerStore";
 import { AppLayout } from "../components/layout/AppLayout";
 import { AFrameScene } from "../components/viewer/AFrameScene";
@@ -19,7 +19,7 @@ import { VRMinimap } from "../components/viewer/VRMinimap";
 export function GeoVRPage() {
   const [folders, setFolders] = useState<FolderMapPoint[]>([]);
   const [tourUrl, setTourUrl] = useState("");
-  const [floorPlan, setFloorPlan] = useState<string | null>(null);
+  const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([]);
   const sceneRef = useRef<HTMLElement | null>(null);
   const {
     photos: viewerPhotos,
@@ -53,8 +53,9 @@ export function GeoVRPage() {
           longitude: p.longitude,
           map_x: p.map_x,
           map_y: p.map_y,
+          floor: p.floor,
         }));
-        setFloorPlan(full?.floor_plan ?? null);
+        setFloorPlans(full?.floor_plans ?? []);
         setViewerPhotos(viewerData, folder.id);
         useViewerStore.getState().goTo(0);
         const first = viewerData[0];
@@ -68,7 +69,7 @@ export function GeoVRPage() {
 
   const backToGeo = useCallback(() => {
     setTourUrl("");
-    setFloorPlan(null);
+    setFloorPlans([]);
   }, []);
 
   return (
@@ -95,7 +96,7 @@ export function GeoVRPage() {
         {tourUrl !== "" && currentViewerPhoto && (
           <>
             <TourMinimap
-              floorPlan={floorPlan}
+              floorPlans={floorPlans}
               photos={viewerPhotos}
               currentId={currentViewerPhoto.id}
               onNavigate={goToId}
@@ -103,7 +104,7 @@ export function GeoVRPage() {
             />
             <VRMinimap
               sceneRef={sceneRef}
-              floorPlan={floorPlan}
+              floorPlans={floorPlans}
               photos={viewerPhotos}
               currentId={currentViewerPhoto.id}
             />

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getFolders } from "../api/folders";
 import { getPhotos } from "../api/photos";
 import { mediaUrl } from "../api/client";
-import type { Folder, Photo } from "../types";
+import type { FloorPlan, Folder, Photo } from "../types";
 import type { Project } from "../components/ui/3d-folder";
 import { useViewerStore } from "../store/viewerStore";
 import { AppLayout } from "../components/layout/AppLayout";
@@ -43,7 +43,7 @@ export function UploadPage() {
 
   // 360° вьювер
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [viewerFloorPlan, setViewerFloorPlan] = useState<string | null>(null);
+  const [viewerFloorPlans, setViewerFloorPlans] = useState<FloorPlan[]>([]);
   const sceneRef = useRef<HTMLElement | null>(null);
   const {
     photos: viewerPhotos,
@@ -99,8 +99,9 @@ export function UploadPage() {
         longitude: p.longitude,
         map_x: p.map_x,
         map_y: p.map_y,
+        floor: p.floor,
       }));
-      setViewerFloorPlan(folders.find((f) => f.id === folderId)?.floor_plan ?? null);
+      setViewerFloorPlans(folders.find((f) => f.id === folderId)?.floor_plans ?? []);
       setViewerPhotos(viewerData, folderId);
       useViewerStore.getState().goTo(index);
       setViewerOpen(true);
@@ -245,10 +246,10 @@ export function UploadPage() {
             </div>
           )}
 
-          {/* Мини-карта плана этажа — навигация по точкам */}
+          {/* Мини-карта планов этажей — навигация по точкам */}
           {!vrActive && (
             <TourMinimap
-              floorPlan={viewerFloorPlan}
+              floorPlans={viewerFloorPlans}
               photos={viewerPhotos}
               currentId={currentViewerPhoto.id}
               onNavigate={goToId}
@@ -259,7 +260,7 @@ export function UploadPage() {
           {/* VR-мини-карта на левом контроллере (сама включается в immersive) */}
           <VRMinimap
             sceneRef={sceneRef}
-            floorPlan={viewerFloorPlan}
+            floorPlans={viewerFloorPlans}
             photos={viewerPhotos}
             currentId={currentViewerPhoto.id}
           />

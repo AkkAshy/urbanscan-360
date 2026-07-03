@@ -1,5 +1,5 @@
 import api from "./client";
-import type { Folder, FolderMapPoint } from "../types";
+import type { Folder, FolderMapPoint, FloorPlan } from "../types";
 
 export async function getFolders(): Promise<Folder[]> {
   const { data } = await api.get<Folder[]>("/folders/");
@@ -33,17 +33,47 @@ export async function getFolderMapPoints(): Promise<FolderMapPoint[]> {
   return data;
 }
 
-/** Загрузить/заменить план этажа папки (multipart) */
-export async function uploadFloorPlan(
+/** Создать этаж (план) в папке — multipart картинка + имя */
+export async function createFloorPlan(
   folderId: number,
-  file: File
-): Promise<Folder> {
+  file: File,
+  name: string,
+  order = 0
+): Promise<FloorPlan> {
   const formData = new FormData();
-  formData.append("floor_plan", file);
-  const { data } = await api.patch<Folder>(`/folders/${folderId}/`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  formData.append("image", file);
+  formData.append("name", name);
+  formData.append("order", String(order));
+  const { data } = await api.post<FloorPlan>(
+    `/folders/${folderId}/floor-plans/`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
   return data;
+}
+
+/** Обновить этаж — имя/порядок (JSON) или заменить картинку (multipart) */
+export async function updateFloorPlan(
+  id: number,
+  patch: { name?: string; order?: number; image?: File }
+): Promise<FloorPlan> {
+  if (patch.image) {
+    const formData = new FormData();
+    formData.append("image", patch.image);
+    if (patch.name !== undefined) formData.append("name", patch.name);
+    if (patch.order !== undefined) formData.append("order", String(patch.order));
+    const { data } = await api.patch<FloorPlan>(`/floor-plans/${id}/`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data;
+  }
+  const { data } = await api.patch<FloorPlan>(`/floor-plans/${id}/`, patch);
+  return data;
+}
+
+/** Удалить этаж */
+export async function deleteFloorPlan(id: number): Promise<void> {
+  await api.delete(`/floor-plans/${id}/`);
 }
 
 export async function deleteFolder(id: number): Promise<void> {

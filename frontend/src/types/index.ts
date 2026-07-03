@@ -9,6 +9,16 @@ export interface User {
   role: "admin" | "manager" | "uploader";
 }
 
+/** План одного этажа объекта (папки) */
+export interface FloorPlan {
+  id: number;
+  folder: number;
+  image: string;
+  name: string;
+  order: number;
+  created_at: string;
+}
+
 export interface Folder {
   id: number;
   name: string;
@@ -18,7 +28,7 @@ export interface Folder {
   photo_count: number;
   latitude: number | null;
   longitude: number | null;
-  floor_plan: string | null;
+  floor_plans: FloorPlan[];
   created_at: string;
   updated_at: string;
 }
@@ -38,6 +48,7 @@ export interface Photo {
   longitude: number | null;
   map_x: number | null;
   map_y: number | null;
+  floor: number | null;
   created_at: string;
 }
 
@@ -52,6 +63,7 @@ export interface PhotoViewer {
   longitude: number | null;
   map_x: number | null;
   map_y: number | null;
+  floor: number | null;
 }
 
 /** Сосед текущего фото (для пространственной навигации) */
