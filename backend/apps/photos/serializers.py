@@ -38,6 +38,8 @@ class PhotoSerializer(serializers.ModelSerializer):
             "shot_date",
             "latitude",
             "longitude",
+            "map_x",
+            "map_y",
             "created_at",
         ]
         read_only_fields = [
@@ -132,4 +134,4 @@ class PhotoViewerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Photo
-        fields = ["id", "title", "image", "thumbnail", "preview", "shot_date", "latitude", "longitude"]
+        fields = ["id", "title", "image", "thumbnail", "preview", "shot_date", "latitude", "longitude", "map_x", "map_y"]

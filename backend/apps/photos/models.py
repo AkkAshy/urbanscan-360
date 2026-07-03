@@ -49,6 +49,14 @@ class Photo(models.Model):
         "Долгота", null=True, blank=True, db_index=True,
         help_text="Из EXIF GPS или ручной ввод",
     )
+    map_x = models.FloatField(
+        "X на плане", null=True, blank=True,
+        help_text="Позиция точки на плане этажа, 0..1 (доля ширины)",
+    )
+    map_y = models.FloatField(
+        "Y на плане", null=True, blank=True,
+        help_text="Позиция точки на плане этажа, 0..1 (доля высоты)",
+    )
     created_at = models.DateTimeField("Загружено", auto_now_add=True)
 
     class Meta:

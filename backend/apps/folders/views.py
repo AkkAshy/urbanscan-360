@@ -22,9 +22,10 @@ class FolderViewSet(viewsets.ModelViewSet):
         # Просмотр — все авторизованные, остальное — менеджер+
         if self.action in ("list", "retrieve", "map_points"):
             return [IsAuthenticated()]
-        if self.action == "create":
+        # update/partial_update — загрузка плана этажа доступна любому автору
+        if self.action in ("create", "update", "partial_update"):
             return [IsAuthenticated()]
-        return [IsManagerOrAdmin()]
+        return [IsManagerOrAdmin()]  # destroy
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)

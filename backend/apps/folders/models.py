@@ -22,6 +22,10 @@ class Folder(models.Model):
         "Долгота", null=True, blank=True,
         help_text="GPS координата здания/объекта",
     )
+    floor_plan = models.ImageField(
+        "План этажа", upload_to="floor_plans/", null=True, blank=True,
+        help_text="Картинка плана; на ней расставляются точки-панорамы для навигации",
+    )
     created_at = models.DateTimeField("Создано", auto_now_add=True)
     updated_at = models.DateTimeField("Обновлено", auto_now=True)
 

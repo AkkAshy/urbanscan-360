@@ -36,9 +36,10 @@ class PhotoViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ("list", "retrieve", "viewer", "neighbors", "map_points", "links"):
             return [IsAuthenticated()]
-        if self.action in ("create", "create_link"):
+        # update/partial_update — расстановка точек на плане доступна любому автору
+        if self.action in ("create", "create_link", "update", "partial_update"):
             return [IsAuthenticated()]
-        return [IsManagerOrAdmin()]  # update, delete
+        return [IsManagerOrAdmin()]  # destroy
 
     def perform_create(self, serializer):
         folder_id = self.kwargs.get("folder_id")

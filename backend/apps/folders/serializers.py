@@ -20,6 +20,7 @@ class FolderSerializer(serializers.ModelSerializer):
             "photo_count",
             "latitude",
             "longitude",
+            "floor_plan",
             "created_at",
             "updated_at",
         ]
