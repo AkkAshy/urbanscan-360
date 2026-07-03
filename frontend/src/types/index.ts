@@ -18,6 +18,7 @@ export interface Folder {
   photo_count: number;
   latitude: number | null;
   longitude: number | null;
+  floor_plan: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +36,8 @@ export interface Photo {
   shot_date: string | null;
   latitude: number | null;
   longitude: number | null;
+  map_x: number | null;
+  map_y: number | null;
   created_at: string;
 }
 
@@ -47,6 +50,8 @@ export interface PhotoViewer {
   shot_date: string | null;
   latitude: number | null;
   longitude: number | null;
+  map_x: number | null;
+  map_y: number | null;
 }
 
 /** Сосед текущего фото (для пространственной навигации) */
