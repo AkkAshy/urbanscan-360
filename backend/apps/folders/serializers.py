@@ -7,7 +7,8 @@ class FloorPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = FloorPlan
         fields = ["id", "folder", "image", "name", "order", "created_at"]
-        read_only_fields = ["id", "created_at"]
+        # folder берётся из URL (nested-роут) в perform_create, не из тела запроса
+        read_only_fields = ["id", "folder", "created_at"]
 
 
 class FolderSerializer(serializers.ModelSerializer):
