@@ -19,12 +19,13 @@ interface Props {
 }
 
 /**
- * Мини-карта планов этажей в VR — «наручная» панель на левом контроллере.
- * Показывает план этажа ТЕКУЩЕГО фото (перестраивается при смене этажа).
+ * Мини-карта планов этажей в VR — HUD-панель в углу поля зрения (крепится к камере,
+ * всегда видна, как десктопный уголок). Показывает план этажа ТЕКУЩЕГО фото.
  *
  * Грабля сцены: <a-image> НЕ рендерится, поэтому план рисуем на <canvas> и вешаем
- * как CanvasTexture на <a-plane>. Всё в try/catch — ошибка A-Frame = no-op, сцену
- * не роняет. Навигация в VR пока линейная (X/Y); тап по точке — отдельная задача.
+ * как CanvasTexture на <a-plane>. Панель рисуется ПОВЕРХ всего (depthTest:false +
+ * renderOrder) — иначе сфера-небо перекрывает. Всё в try/catch: ошибка A-Frame =
+ * no-op, сцену не роняет. Навигация в VR линейная (X/Y); тап по точке — отдельно.
  */
 export function VRMinimap({ sceneRef, floorPlans, photos, currentId }: Props) {
   const vrActive = useViewerStore((s) => s.vrActive);
@@ -57,8 +58,8 @@ export function VRMinimap({ sceneRef, floorPlans, photos, currentId }: Props) {
       type CanvasTextureLike = { needsUpdate: boolean };
       type ThreeLike = { CanvasTexture: new (c: HTMLCanvasElement) => CanvasTextureLike };
       const THREE = (window as unknown as { AFRAME?: { THREE?: ThreeLike } }).AFRAME?.THREE;
-      const leftHand = scene.querySelector('[data-vr-hand="left"]') as HTMLElement | null;
-      if (!THREE || !leftHand) return;
+      const camera = scene.querySelector("a-camera") as HTMLElement | null;
+      if (!THREE || !camera) return;
 
       const canvas = document.createElement("canvas");
       canvas.width = 256;
@@ -87,7 +88,7 @@ export function VRMinimap({ sceneRef, floorPlans, photos, currentId }: Props) {
         }
         const aspect = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1;
         try {
-          plane?.setAttribute("geometry", `primitive: plane; width: ${0.14 * aspect}; height: 0.14`);
+          plane?.setAttribute("geometry", `primitive: plane; width: ${(0.3 * aspect).toFixed(3)}; height: 0.3`);
         } catch {
           /* no-op */
         }
@@ -97,21 +98,26 @@ export function VRMinimap({ sceneRef, floorPlans, photos, currentId }: Props) {
       };
       img.src = mediaUrl(activeImage);
 
+      // HUD-панель в правом-нижнем углу поля зрения (крепится к камере, z=-1м)
       plane = document.createElement("a-plane");
-      plane.setAttribute("geometry", "primitive: plane; width: 0.14; height: 0.14");
-      plane.setAttribute("position", "0.02 0.06 -0.04");
-      plane.setAttribute("rotation", "-55 0 0");
-      plane.setAttribute("material", "shader: flat; side: double; transparent: true");
+      plane.setAttribute("geometry", "primitive: plane; width: 0.3; height: 0.3");
+      plane.setAttribute("position", "0.42 -0.32 -1");
+      plane.setAttribute("rotation", "0 -12 0");
+      plane.setAttribute("material", "shader: flat; side: double; transparent: true; depthTest: false");
       plane.setAttribute("data-vr-minimap", "");
-      leftHand.appendChild(plane);
+      camera.appendChild(plane);
 
       const attachTexture = () => {
-        const mesh = (plane as unknown as {
-          getObject3D?: (t: string) => { material?: { map?: unknown; needsUpdate?: boolean } } | null;
+        const obj = (plane as unknown as {
+          getObject3D?: (t: string) => {
+            material?: { map?: unknown; needsUpdate?: boolean };
+            renderOrder?: number;
+          } | null;
         }).getObject3D?.("mesh");
-        if (mesh && mesh.material) {
-          (mesh.material as { map?: unknown }).map = texture;
-          (mesh.material as { needsUpdate?: boolean }).needsUpdate = true;
+        if (obj && obj.material) {
+          (obj.material as { map?: unknown }).map = texture;
+          (obj.material as { needsUpdate?: boolean }).needsUpdate = true;
+          obj.renderOrder = 999; // поверх сферы-неба и всего остального
           return true;
         }
         return false;
