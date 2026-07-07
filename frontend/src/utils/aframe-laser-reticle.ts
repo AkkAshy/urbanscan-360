@@ -33,7 +33,9 @@ if (!AFRAME.components["laser-reticle"]) {
       this.camPos = new THREE.Vector3();
       dot.addEventListener("loaded", () => {
         const mesh = dot.getObject3D("mesh");
-        if (mesh) mesh.renderOrder = 30; // поверх меток
+        // renderOrder выше мини-карты-HUD (VRMinimap: renderOrder 999, depthTest false),
+        // иначе панель перекрывает прицел при наведении на неё.
+        if (mesh) mesh.renderOrder = 1001;
       });
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
