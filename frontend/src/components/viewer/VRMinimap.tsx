@@ -54,7 +54,6 @@ export function VRMinimap({ sceneRef, floorPlans, photos, currentId, onNavigate 
     const scene = sceneRef.current;
     if (!scene) return;
 
-    let raf = 0;
     let plane: HTMLElement | null = null;
     let disposed = false;
 
@@ -137,22 +136,6 @@ export function VRMinimap({ sceneRef, floorPlans, photos, currentId, onNavigate 
       };
       plane.addEventListener("click", onPlaneClick);
 
-      const attachTexture = () => {
-        const obj = (plane as unknown as {
-          getObject3D?: (t: string) => {
-            material?: { map?: unknown; needsUpdate?: boolean };
-            renderOrder?: number;
-          } | null;
-        }).getObject3D?.("mesh");
-        if (obj && obj.material) {
-          (obj.material as { map?: unknown }).map = texture;
-          (obj.material as { needsUpdate?: boolean }).needsUpdate = true;
-          obj.renderOrder = 999; // поверх сферы-неба и всего остального
-          return true;
-        }
-        return false;
-      };
-
       const W = canvas.width;
       const H = canvas.height;
       const accent = "#3b82f6";
@@ -204,21 +187,43 @@ export function VRMinimap({ sceneRef, floorPlans, photos, currentId, onNavigate 
         texture.needsUpdate = true;
       };
 
-      let textureReady = false;
-      const loop = () => {
-        if (disposed) return;
-        if (!textureReady) textureReady = attachTexture();
-        draw();
-        raf = requestAnimationFrame(loop);
+      // Текстуру вешаем на mesh и перерисовываем через onBeforeRender THREE — этот
+      // цикл тикает и в иммерсивном WebXR на Quest. window.requestAnimationFrame во
+      // время immersive-сессии на странице НЕ вызывается → канвас оставался пустым
+      // (был белый квадрат на Quest, хотя на ноуте-magic-window работало).
+      const setupMesh = () => {
+        const mesh = (plane as unknown as {
+          getObject3D?: (t: string) => {
+            material?: { map?: unknown; needsUpdate?: boolean };
+            renderOrder?: number;
+            onBeforeRender?: () => void;
+          } | null;
+        }).getObject3D?.("mesh");
+        if (!mesh || !mesh.material) return false;
+        (mesh.material as { map?: unknown }).map = texture;
+        (mesh.material as { needsUpdate?: boolean }).needsUpdate = true;
+        mesh.renderOrder = 999; // поверх сферы-неба и всего остального
+        mesh.onBeforeRender = () => {
+          if (!disposed) draw();
+        };
+        return true;
       };
-      raf = requestAnimationFrame(loop);
+      draw(); // первый кадр сразу, чтобы канвас не был пустым до первого рендера
+      if (!setupMesh()) {
+        // mesh ещё не готов — ждём инициализации плоскости A-Frame
+        plane.addEventListener("loaded", setupMesh, { once: true });
+        plane.addEventListener("object3dset", (e) => {
+          if ((e as unknown as { detail?: { type?: string } }).detail?.type === "mesh") {
+            setupMesh();
+          }
+        });
+      }
     } catch (err) {
       console.error("VRMinimap: не удалось построить мини-карту в VR:", err);
     }
 
     return () => {
       disposed = true;
-      if (raf) cancelAnimationFrame(raf);
       try {
         plane?.parentNode?.removeChild(plane);
       } catch {
