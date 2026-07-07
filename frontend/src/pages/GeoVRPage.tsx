@@ -107,6 +107,7 @@ export function GeoVRPage() {
               floorPlans={floorPlans}
               photos={viewerPhotos}
               currentId={currentViewerPhoto.id}
+              onNavigate={goToId}
             />
           </>
         )}

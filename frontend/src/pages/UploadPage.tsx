@@ -263,6 +263,7 @@ export function UploadPage() {
             floorPlans={viewerFloorPlans}
             photos={viewerPhotos}
             currentId={currentViewerPhoto.id}
+            onNavigate={goToId}
           />
 
           {/* HTML стрелки — линейная навигация вперёд/назад */}

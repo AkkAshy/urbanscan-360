@@ -16,6 +16,8 @@ interface Props {
   floorPlans: FloorPlan[];
   photos: MinimapPhoto[];
   currentId: number | null;
+  /** Тап лучом по точке на HUD → переход к этой панораме */
+  onNavigate: (photoId: number) => void;
 }
 
 /**
@@ -27,7 +29,7 @@ interface Props {
  * renderOrder) — иначе сфера-небо перекрывает. Всё в try/catch: ошибка A-Frame =
  * no-op, сцену не роняет. Навигация в VR линейная (X/Y); тап по точке — отдельно.
  */
-export function VRMinimap({ sceneRef, floorPlans, photos, currentId }: Props) {
+export function VRMinimap({ sceneRef, floorPlans, photos, currentId, onNavigate }: Props) {
   const vrActive = useViewerStore((s) => s.vrActive);
 
   const currentPhoto = photos.find((p) => p.id === currentId) ?? null;
@@ -35,14 +37,16 @@ export function VRMinimap({ sceneRef, floorPlans, photos, currentId }: Props) {
   const activeFloor = floorPlans.find((f) => f.id === activeFloorId) ?? null;
   const activeImage = activeFloor?.image ?? null;
 
-  // Свежие значения для rAF-цикла без пересоздания плоскости
+  // Свежие значения для rAF-цикла и клика без пересоздания плоскости
   const photosRef = useRef(photos);
   const currentIdRef = useRef(currentId);
   const activeFloorIdRef = useRef(activeFloorId);
+  const onNavigateRef = useRef(onNavigate);
   useEffect(() => {
     photosRef.current = photos;
     currentIdRef.current = currentId;
     activeFloorIdRef.current = activeFloorId;
+    onNavigateRef.current = onNavigate;
   });
 
   useEffect(() => {
@@ -105,7 +109,33 @@ export function VRMinimap({ sceneRef, floorPlans, photos, currentId }: Props) {
       plane.setAttribute("rotation", "0 -12 0");
       plane.setAttribute("material", "shader: flat; side: double; transparent: true; depthTest: false");
       plane.setAttribute("data-vr-minimap", "");
+      plane.classList.add("clickable"); // луч контроллера ловит клик (raycaster objects: .clickable)
       camera.appendChild(plane);
+
+      // Тап лучом по HUD → по UV находим ближайшую точку этажа и переходим
+      const onPlaneClick = (evt: Event) => {
+        const uv = (
+          evt as unknown as { detail?: { intersection?: { uv?: { x: number; y: number } } } }
+        ).detail?.intersection?.uv;
+        if (!uv) return;
+        const cx = uv.x * canvas.width;
+        const cy = (1 - uv.y) * canvas.height; // CanvasTexture flipY: верх канваса = верх плоскости
+        const floorId = activeFloorIdRef.current;
+        const pts = photosRef.current.filter(
+          (p) => p.map_x != null && p.map_y != null && p.floor === floorId
+        );
+        let best: MinimapPhoto | null = null;
+        let bestD = Infinity;
+        for (const p of pts) {
+          const d = Math.hypot(p.map_x! * canvas.width - cx, p.map_y! * canvas.height - cy);
+          if (d < bestD) {
+            bestD = d;
+            best = p;
+          }
+        }
+        if (best && bestD <= 26) onNavigateRef.current(best.id); // порог попадания ~10% ширины
+      };
+      plane.addEventListener("click", onPlaneClick);
 
       const attachTexture = () => {
         const obj = (plane as unknown as {
