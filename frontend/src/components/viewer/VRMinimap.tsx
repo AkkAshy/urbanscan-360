@@ -21,8 +21,9 @@ interface Props {
 }
 
 /**
- * Мини-карта планов этажей в VR — HUD-панель в углу поля зрения (крепится к камере,
- * всегда видна, как десктопный уголок). Показывает план этажа ТЕКУЩЕГО фото.
+ * Мини-карта планов этажей в VR — панель, ЗАКРЕПЛЁННАЯ В ПРОСТРАНСТВЕ (не следует
+ * за головой): висит спереди-снизу, к ней можно подойти/отвернуться. Показывает
+ * план этажа ТЕКУЩЕГО фото.
  *
  * Грабля сцены: <a-image> НЕ рендерится, поэтому план рисуем на <canvas> и вешаем
  * как CanvasTexture на <a-plane>. Панель рисуется ПОВЕРХ всего (depthTest:false +
@@ -91,7 +92,7 @@ export function VRMinimap({ sceneRef, floorPlans, photos, currentId, onNavigate 
         }
         const aspect = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1;
         try {
-          plane?.setAttribute("geometry", `primitive: plane; width: ${(0.3 * aspect).toFixed(3)}; height: 0.3`);
+          plane?.setAttribute("geometry", `primitive: plane; width: ${(0.4 * aspect).toFixed(3)}; height: 0.4`);
         } catch {
           /* no-op */
         }
@@ -101,15 +102,16 @@ export function VRMinimap({ sceneRef, floorPlans, photos, currentId, onNavigate 
       };
       img.src = mediaUrl(activeImage);
 
-      // HUD-панель в правом-нижнем углу поля зрения (крепится к камере, z=-1м)
+      // Панель ЗАКРЕПЛЕНА В МИРЕ (ребёнок сцены, не камеры) — не следует за головой:
+      // висит спереди-снизу, можно отвернуться и вернуться. depthTest:false → поверх неба.
       plane = document.createElement("a-plane");
-      plane.setAttribute("geometry", "primitive: plane; width: 0.3; height: 0.3");
-      plane.setAttribute("position", "0.42 -0.32 -1");
-      plane.setAttribute("rotation", "0 -12 0");
+      plane.setAttribute("geometry", "primitive: plane; width: 0.4; height: 0.4");
+      plane.setAttribute("position", "0 1.1 -1.5");
+      plane.setAttribute("rotation", "0 0 0");
       plane.setAttribute("material", "shader: flat; side: double; transparent: true; depthTest: false");
       plane.setAttribute("data-vr-minimap", "");
       plane.classList.add("clickable"); // луч контроллера ловит клик (raycaster objects: .clickable)
-      camera.appendChild(plane);
+      scene.appendChild(plane);
 
       // Тап лучом по HUD → по UV находим ближайшую точку этажа и переходим
       const onPlaneClick = (evt: Event) => {
