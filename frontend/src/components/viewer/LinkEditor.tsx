@@ -1,3 +1,4 @@
+import AFRAME from "aframe";
 import { Link2, Plus, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { mediaUrl } from "../../api/client";
@@ -5,6 +6,10 @@ import { createPhotoLink, deletePhotoLink } from "../../api/photos";
 import type { PhotoLink, PhotoViewer } from "../../types";
 import { useViewerStore } from "../../store/viewerStore";
 import { skyPointToYawPitch } from "../../utils/sphere";
+
+// A-Frame несёт свой three.js.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const THREE = (AFRAME as unknown as { THREE: any }).THREE;
 
 interface Props {
   sceneRef: React.MutableRefObject<HTMLElement | null>;
@@ -39,30 +44,41 @@ export function LinkEditor({
     (p) => p.id !== currentPhoto.id && !linkedIds.has(p.id)
   );
 
-  // Клик по sky → получаем yaw/pitch из intersection point
+  // Клик по сцене → yaw/pitch. НЕ вешаем `clickable` на #photo-sky: A-Frame
+  // raycaster не берёт в objects узел, которому класс добавили динамически (в
+  // отличие от новых узлов-хотспотов), поэтому cursor-click по небу приходит
+  // без intersection и точка не ставится. Надёжно: слушаем DOM-клик по <canvas>
+  // (он доходит всегда) и сами кастуем луч из камеры в направление курсора.
   useEffect(() => {
-    const scene = sceneRef.current;
-    if (!scene) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const scene = sceneRef.current as any;
+    const canvas: HTMLCanvasElement | undefined =
+      scene?.canvas ?? scene?.querySelector?.("canvas");
+    if (!scene || !canvas) return;
 
-    const sky = scene.querySelector("#photo-sky");
-    if (!sky) return;
-
-    // Добавляем clickable чтобы raycaster ловил
-    sky.classList.add("clickable");
-
-    const handleClick = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (!detail?.intersection?.point) return;
-
-      const { yaw, pitch } = skyPointToYawPitch(detail.intersection.point);
+    const handleClick = (e: MouseEvent) => {
+      const cam = scene.camera;
+      if (!cam) return;
+      const rect = canvas.getBoundingClientRect();
+      const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      const rc = new THREE.Raycaster();
+      rc.setFromCamera({ x: ndcX, y: ndcY }, cam);
+      // Клик точно по существующему хотспоту — это его удаление (LinkArrows),
+      // не создаём новую точку поверх.
+      const hotspots = Array.from(scene.querySelectorAll("a-plane.clickable"))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((el: any) => el.getObject3D?.("mesh"))
+        .filter(Boolean);
+      if (hotspots.length && rc.intersectObjects(hotspots, false).length) return;
+      // yaw/pitch масштаб-инвариантны — можно передать направление луча как точку
+      const d = rc.ray.direction;
+      const { yaw, pitch } = skyPointToYawPitch({ x: d.x, y: d.y, z: d.z });
       setPlacing({ yaw, pitch });
     };
 
-    sky.addEventListener("click", handleClick);
-    return () => {
-      sky.removeEventListener("click", handleClick);
-      sky.classList.remove("clickable");
-    };
+    canvas.addEventListener("click", handleClick);
+    return () => canvas.removeEventListener("click", handleClick);
   }, [sceneRef]);
 
   // Выбрать целевое фото и создать связь
