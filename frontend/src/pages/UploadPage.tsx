@@ -1,7 +1,7 @@
-import { MapPin, Plus, X } from "lucide-react";
+import { Link2, MapPin, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getFolders } from "../api/folders";
-import { getPhotos } from "../api/photos";
+import { deletePhotoLink, getPhotos } from "../api/photos";
 import { mediaUrl } from "../api/client";
 import type { FloorPlan, Folder, Photo } from "../types";
 import type { Project } from "../components/ui/3d-folder";
@@ -11,10 +11,15 @@ import { AnimatedFolder } from "../components/ui/3d-folder";
 import { CreateFolderModal } from "../components/folders/CreateFolderModal";
 import { FolderContentModal } from "../components/folders/FolderContentModal";
 import { AFrameScene } from "../components/viewer/AFrameScene";
+import { LinkArrows } from "../components/viewer/LinkArrows";
+import { LinkEditor } from "../components/viewer/LinkEditor";
 import { NavigationArrows } from "../components/viewer/NavigationArrows";
 import { ThumbnailStrip } from "../components/viewer/ThumbnailStrip";
 import { TourMinimap } from "../components/viewer/TourMinimap";
 import { VRMinimap } from "../components/viewer/VRMinimap";
+import { VRMenu } from "../components/viewer/vr/VRMenu";
+import { VRLinkPlacer } from "../components/viewer/vr/VRLinkPlacer";
+import { VRPhotoPicker } from "../components/viewer/vr/VRPhotoPicker";
 import { Button } from "../components/ui/Button";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 
@@ -48,9 +53,14 @@ export function UploadPage() {
   const {
     photos: viewerPhotos,
     currentIndex,
+    links,
+    linkEditMode,
     vrActive,
+    vrPlacing,
     setPhotos: setViewerPhotos,
     goToId,
+    fetchLinks,
+    setLinkEditMode,
   } = useViewerStore();
   const currentViewerPhoto = viewerPhotos[currentIndex] ?? null;
 
@@ -102,11 +112,12 @@ export function UploadPage() {
         floor: p.floor,
       }));
       setViewerFloorPlans(folders.find((f) => f.id === folderId)?.floor_plans ?? []);
+      setLinkEditMode(false); // вьювер открывается в режиме просмотра
       setViewerPhotos(viewerData, folderId);
       useViewerStore.getState().goTo(index);
       setViewerOpen(true);
     },
-    [setViewerPhotos, folders]
+    [setViewerPhotos, folders, setLinkEditMode]
   );
 
   // Клик на фото в модалке папки — сразу в 360-вьювер
@@ -123,11 +134,12 @@ export function UploadPage() {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setViewerOpen(false);
+        setLinkEditMode(false);
       }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [viewerOpen]);
+  }, [viewerOpen, setLinkEditMode]);
 
   return (
     <AppLayout>
@@ -229,14 +241,47 @@ export function UploadPage() {
           <AFrameScene
             photoUrl={mediaUrl(currentViewerPhoto.preview || currentViewerPhoto.image)}
             sceneRef={sceneRef}
-            onExit={() => setViewerOpen(false)}
+            onExit={() => {
+              setViewerOpen(false);
+              setLinkEditMode(false);
+            }}
           />
 
-          {/* Кнопка закрытия */}
+          {/* VR-инструменты связей: меню, постановка точки лучом, выбор цели */}
+          {vrActive && <VRMenu sceneRef={sceneRef} />}
+          {vrActive && (
+            <VRLinkPlacer sceneRef={sceneRef} arming={linkEditMode && vrPlacing === null} />
+          )}
+          {vrActive && vrPlacing && (
+            <VRPhotoPicker
+              sceneRef={sceneRef}
+              photos={viewerPhotos}
+              currentPhoto={currentViewerPhoto}
+              links={links}
+              onLinksChanged={fetchLinks}
+            />
+          )}
+
+          {/* Кнопки: связи (режим редактирования) + закрыть */}
           {!vrActive && (
             <div className="absolute top-4 right-4 z-30 flex gap-2">
               <button
-                onClick={() => setViewerOpen(false)}
+                onClick={() => setLinkEditMode(!linkEditMode)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm backdrop-blur-sm cursor-pointer transition-colors ${
+                  linkEditMode
+                    ? "bg-orange-500/90 text-white"
+                    : "bg-black/50 hover:bg-black/70 text-white"
+                }`}
+                title={linkEditMode ? "Выключить режим связей" : "Связать фото"}
+              >
+                <Link2 size={14} />
+                {linkEditMode ? "Выйти" : "Связи"}
+              </button>
+              <button
+                onClick={() => {
+                  setViewerOpen(false);
+                  setLinkEditMode(false);
+                }}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm bg-black/60 hover:bg-black/80 text-white backdrop-blur-sm transition-colors cursor-pointer"
                 title="Закрыть (Esc)"
               >
@@ -266,8 +311,35 @@ export function UploadPage() {
             onNavigate={goToId}
           />
 
-          {/* HTML стрелки — линейная навигация вперёд/назад */}
-          {!vrActive && <NavigationArrows />}
+          {/* Точки-хотспоты в сфере: клик = переход; в режиме связей = удаление */}
+          <LinkArrows
+            sceneRef={sceneRef}
+            links={links}
+            onNavigate={goToId}
+            editMode={linkEditMode}
+            onDeleteLink={async (linkId) => {
+              try {
+                await deletePhotoLink(linkId);
+                fetchLinks();
+              } catch (err) {
+                console.error("Ошибка удаления связи:", err);
+              }
+            }}
+          />
+
+          {/* Десктопный редактор связей: клик по сфере → галерея фото → выбор цели */}
+          {!vrActive && linkEditMode && (
+            <LinkEditor
+              sceneRef={sceneRef}
+              photos={viewerPhotos}
+              currentPhoto={currentViewerPhoto}
+              links={links}
+              onLinksChanged={fetchLinks}
+            />
+          )}
+
+          {/* HTML стрелки — линейная навигация, только когда нет хотспотов и не редактируем */}
+          {!vrActive && links.length === 0 && !linkEditMode && <NavigationArrows />}
 
           {!vrActive && <ThumbnailStrip />}
 
