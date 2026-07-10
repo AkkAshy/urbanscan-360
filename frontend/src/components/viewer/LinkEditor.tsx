@@ -168,12 +168,12 @@ export function LinkEditor({
         )}
       </div>
 
-      {/* Панель выбора целевого фото — снизу */}
+      {/* Панель выбора целевого фото — крупная галерея (~70% высоты экрана) */}
       {placing && (
-        <div className="absolute bottom-16 left-0 right-0 z-30 px-4">
-          <div className="bg-black/80 backdrop-blur-sm rounded-xl p-3 max-w-2xl mx-auto">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-white text-sm font-medium">
+        <div className="absolute inset-x-0 bottom-6 z-30 px-4">
+          <div className="bg-black/80 backdrop-blur-sm rounded-2xl p-4 max-w-6xl mx-auto max-h-[70vh] flex flex-col">
+            <div className="flex items-center justify-between mb-3 shrink-0">
+              <p className="text-white text-base font-semibold">
                 Куда ведёт? (yaw: {placing.yaw.toFixed(0)}°, pitch: {placing.pitch.toFixed(0)}°)
               </p>
               <div className="flex gap-2">
@@ -183,43 +183,43 @@ export function LinkEditor({
                   <button
                     onClick={handleLinkNext}
                     disabled={saving}
-                    className="flex items-center gap-1 px-2 py-1 rounded bg-blue-500/80 hover:bg-blue-500 text-white text-xs cursor-pointer disabled:opacity-50"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-500/80 hover:bg-blue-500 text-white text-sm cursor-pointer disabled:opacity-50"
                   >
-                    <Plus size={12} />
+                    <Plus size={14} />
                     Следующее
                   </button>
                 )}
                 <button
                   onClick={() => setPlacing(null)}
-                  className="px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white text-xs cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm cursor-pointer"
                 >
                   Отмена
                 </button>
               </div>
             </div>
 
-            {/* Список фото для выбора */}
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {/* Крупная сетка превью со скроллом. aspect 2:1 — под equirectangular 360° */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 overflow-y-auto pr-1 scrollbar-hide">
               {availablePhotos.map((photo) => (
                 <button
                   key={photo.id}
                   onClick={() => handleSelectTarget(photo.id)}
                   disabled={saving}
-                  className="flex-shrink-0 w-20 rounded-md overflow-hidden border-2 border-transparent hover:border-orange-400 transition-all cursor-pointer disabled:opacity-50"
+                  className="group rounded-lg overflow-hidden border-2 border-transparent hover:border-orange-400 transition-all cursor-pointer disabled:opacity-50"
                 >
                   <img
                     src={mediaUrl(photo.thumbnail || photo.image)}
                     alt={photo.title}
-                    className="w-full h-12 object-cover"
+                    className="w-full aspect-[2/1] object-cover"
                     loading="lazy"
                   />
-                  <p className="text-[10px] text-white text-center truncate px-1 py-0.5 bg-black/40">
+                  <p className="text-xs text-white text-center truncate px-2 py-1 bg-black/40 group-hover:bg-orange-500/30">
                     {photo.title || `#${photo.id}`}
                   </p>
                 </button>
               ))}
               {availablePhotos.length === 0 && (
-                <p className="text-white/50 text-xs py-2">
+                <p className="text-white/50 text-sm py-4 col-span-full text-center">
                   Все фото уже привязаны
                 </p>
               )}
