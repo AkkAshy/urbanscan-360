@@ -1,7 +1,7 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Link2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getFolderMapPoints, getFolder } from "../api/folders";
-import { getViewerPhotos } from "../api/photos";
+import { getViewerPhotos, deletePhotoLink } from "../api/photos";
 import { mediaUrl } from "../api/client";
 import type { FloorPlan, FolderMapPoint } from "../types";
 import { useViewerStore } from "../store/viewerStore";
@@ -10,11 +10,19 @@ import { AFrameScene } from "../components/viewer/AFrameScene";
 import { GeoVRRoom } from "../components/viewer/GeoVRRoom";
 import { TourMinimap } from "../components/viewer/TourMinimap";
 import { VRMinimap } from "../components/viewer/VRMinimap";
+import { LinkArrows } from "../components/viewer/LinkArrows";
+import { LinkEditor } from "../components/viewer/LinkEditor";
+import { VRMenu } from "../components/viewer/vr/VRMenu";
+import { VRLinkPlacer } from "../components/viewer/vr/VRLinkPlacer";
+import { VRPhotoPicker } from "../components/viewer/vr/VRPhotoPicker";
 
 /**
  * Гео-VR пространство: гео-режим (папки по азимутам) ↔ 360-тур выбранной папки.
  * tourUrl === "" → гео-режим; иначе показываем 360-тур.
- * Навигация в туре — через мини-карту плана этажа (точки-панорамы), не хотспоты.
+ * Навигация в туре — двумя способами: мини-карта плана этажа (точки-панорамы)
+ * и хотспоты-метки прямо в сфере (LinkArrows по связям PhotoLink).
+ * В режиме «Связи» доступно создание/удаление хотспотов — на десктопе
+ * (LinkEditor) и в VR (VRMenu / VRLinkPlacer / VRPhotoPicker).
  */
 export function GeoVRPage() {
   const [folders, setFolders] = useState<FolderMapPoint[]>([]);
@@ -24,14 +32,23 @@ export function GeoVRPage() {
   const {
     photos: viewerPhotos,
     currentIndex,
+    links,
+    linkEditMode,
+    vrActive,
+    vrPlacing,
     setPhotos: setViewerPhotos,
     goToId,
+    fetchLinks,
+    setLinkEditMode,
   } = useViewerStore();
   const currentViewerPhoto = viewerPhotos[currentIndex] ?? null;
 
   useEffect(() => {
+    // Вход в гео-VR — всегда режим ПРОСМОТРА (не редактирования связей).
+    // Иначе клики/луч случайно создают/удаляют связи, а метки жёлтые.
+    setLinkEditMode(false);
     getFolderMapPoints().then(setFolders).catch(() => setFolders([]));
-  }, []);
+  }, [setLinkEditMode]);
 
   // Клик по папке в гео-комнате → грузим её фото + план → в 360-тур
   const handleSelect = useCallback(
@@ -55,6 +72,7 @@ export function GeoVRPage() {
           map_y: p.map_y,
           floor: p.floor,
         }));
+        setLinkEditMode(false); // тур открывается в режиме просмотра
         setFloorPlans(full?.floor_plans ?? []);
         setViewerPhotos(viewerData, folder.id);
         useViewerStore.getState().goTo(0);
@@ -64,13 +82,14 @@ export function GeoVRPage() {
         console.error("Гео-VR: не удалось открыть тур:", err);
       }
     },
-    [setViewerPhotos]
+    [setViewerPhotos, setLinkEditMode]
   );
 
   const backToGeo = useCallback(() => {
     setTourUrl("");
     setFloorPlans([]);
-  }, []);
+    setLinkEditMode(false);
+  }, [setLinkEditMode]);
 
   return (
     <AppLayout>
@@ -92,9 +111,28 @@ export function GeoVRPage() {
           <GeoVRRoom sceneRef={sceneRef} folders={folders} onSelect={handleSelect} />
         )}
 
-        {/* 360-тур: мини-карта плана этажа для навигации */}
+        {/* 360-тур: навигация (мини-карта + точки) + редактор связей */}
         {tourUrl !== "" && currentViewerPhoto && (
           <>
+            {/* VR-инструменты связей: меню, постановка точки лучом, выбор цели */}
+            {vrActive && <VRMenu sceneRef={sceneRef} />}
+            {vrActive && (
+              <VRLinkPlacer
+                sceneRef={sceneRef}
+                arming={linkEditMode && vrPlacing === null}
+              />
+            )}
+            {vrActive && vrPlacing && (
+              <VRPhotoPicker
+                sceneRef={sceneRef}
+                photos={viewerPhotos}
+                currentPhoto={currentViewerPhoto}
+                links={links}
+                onLinksChanged={fetchLinks}
+              />
+            )}
+
+            {/* Навигация: мини-карта плана этажа (десктоп-оверлей + VR-HUD) */}
             <TourMinimap
               floorPlans={floorPlans}
               photos={viewerPhotos}
@@ -109,10 +147,37 @@ export function GeoVRPage() {
               currentId={currentViewerPhoto.id}
               onNavigate={goToId}
             />
+
+            {/* Точки-хотспоты прямо в сфере: клик = переход; в режиме связей = удаление */}
+            <LinkArrows
+              sceneRef={sceneRef}
+              links={links}
+              onNavigate={goToId}
+              editMode={linkEditMode}
+              onDeleteLink={async (linkId) => {
+                try {
+                  await deletePhotoLink(linkId);
+                  fetchLinks();
+                } catch (err) {
+                  console.error("Ошибка удаления связи:", err);
+                }
+              }}
+            />
+
+            {/* Десктопный редактор связей (клик по сцене → выбор целевого фото) */}
+            {!vrActive && linkEditMode && (
+              <LinkEditor
+                sceneRef={sceneRef}
+                photos={viewerPhotos}
+                currentPhoto={currentViewerPhoto}
+                links={links}
+                onLinksChanged={fetchLinks}
+              />
+            )}
           </>
         )}
 
-        {/* Кнопка «назад» — аварийный выход, работает и в VR */}
+        {/* Кнопки тура: назад (всегда — аварийный выход и в VR) + «Связи» (десктоп) */}
         {tourUrl !== "" && (
           <div className="absolute top-4 left-4 z-30 flex gap-2">
             <button
@@ -122,6 +187,20 @@ export function GeoVRPage() {
               <ArrowLeft size={16} />
               К карте объектов
             </button>
+            {!vrActive && (
+              <button
+                onClick={() => setLinkEditMode(!linkEditMode)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm backdrop-blur-sm cursor-pointer transition-colors ${
+                  linkEditMode
+                    ? "bg-orange-500/90 text-white"
+                    : "bg-black/60 hover:bg-black/80 text-white"
+                }`}
+                title={linkEditMode ? "Выключить режим связей" : "Связать панорамы"}
+              >
+                <Link2 size={14} />
+                {linkEditMode ? "Выйти из связей" : "Связи"}
+              </button>
+            )}
           </div>
         )}
       </div>
